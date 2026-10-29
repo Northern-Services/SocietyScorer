@@ -38,11 +38,15 @@ const openScorecardDetail = (sc: any) => {
   showDetailModal.value = true
 }
 
-// 1. Fetch live player profile
-const { data: userRes, error: userError } = await useFetch('/api/auth/me')
+// 1. Fetch live player profile and require auth
+const { data: userRes, error: userError } = await useFetch('/api/auth/me', {
+  ignoreResponseError: true
+})
 
-if (userError.value) {
-  await navigateTo('/register')
+const isLoggedIn = computed(() => !!userRes.value?.success && !!userRes.value?.data)
+
+if (userError.value || !isLoggedIn.value) {
+  await navigateTo('/login')
 }
 
 const playerProfile = computed(() => userRes.value?.data || {

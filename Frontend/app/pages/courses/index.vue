@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
+
+const { data: userRes, error: userError } = await useFetch('/api/auth/me', {
+  ignoreResponseError: true
+})
+
+const isLoggedIn = computed(() => !!userRes.value?.success && !!userRes.value?.data)
 
 const searchQuery = ref('')
 const courses = ref<any[]>([])
@@ -36,7 +42,7 @@ onMounted(() => fetchCourses())
         <h1 class="text-xl font-black text-white">Course Directory</h1>
         <p class="text-[11px] text-slate-400">Select a course or add a new one.</p>
       </div>
-      <NuxtLink to="/courses/new" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-xl shadow-lg shadow-emerald-600/20">
+      <NuxtLink v-if="isLoggedIn" to="/courses/new" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-xl shadow-lg shadow-emerald-600/20">
         + Add Course
       </NuxtLink>
     </div>
@@ -58,7 +64,7 @@ onMounted(() => fetchCourses())
         </div>
         <div class="text-[11px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800">
           <span>Par {{ course.pars.reduce((a: number, b: number) => a + b, 0) }}</span>
-          <NuxtLink :to="`/scorecard?courseId=${course.id}`" class="text-xs text-emerald-400 font-bold hover:underline">Play Course →</NuxtLink>
+          <NuxtLink v-if="isLoggedIn" :to="`/scorecard?courseId=${course.id}`" class="text-xs text-emerald-400 font-bold hover:underline">Play Course →</NuxtLink>
         </div>
       </div>
     </div>

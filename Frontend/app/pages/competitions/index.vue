@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
+const { data: userRes, error: userError } = await useFetch('/api/auth/me', {
+  ignoreResponseError: true
+})
+
+const isLoggedIn = computed(() => !!userRes.value?.success && !!userRes.value?.data)
+
+if (userError.value || !isLoggedIn.value) {
+  await navigateTo('/login')
+}
+
 const { data: compRes, refresh } = await useFetch('/api/competitions')
 const competitions = computed(() => compRes.value?.data || [])
 

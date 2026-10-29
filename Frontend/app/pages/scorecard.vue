@@ -16,7 +16,16 @@ const submitting = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
 
-const { data: userRes } = await useFetch('/api/auth/me')
+const { data: userRes, error: userError } = await useFetch('/api/auth/me', {
+  ignoreResponseError: true
+})
+
+const isLoggedIn = computed(() => !!userRes.value?.success && !!userRes.value?.data)
+
+if (userError.value || !isLoggedIn.value) {
+  await navigateTo('/login')
+}
+
 const currentUser = computed(() => userRes.value?.data || null)
 
 const playingHandicap = computed(() => {
@@ -97,6 +106,15 @@ const shotsReceived = computed(() => {
   if (hcp >= si) shots += 1
   if (hcp >= si + 18) shots += 1
   return shots
+})
+
+// Player's personal handicap band for this round
+const handicapBand = computed(() => {
+  const hcp = playingHandicap.value
+  if (hcp <= 6) return { label: 'Band 1 (0–6)', rate: 0.2, color: 'text-emerald-400' }
+  if (hcp <= 12) return { label: 'Band 2 (7–12)', rate: 0.4, color: 'text-blue-400' }
+  if (hcp <= 18) return { label: 'Band 3 (13–18)', rate: 0.6, color: 'text-amber-400' }
+  return { label: 'Band 4 (19–32)', rate: 0.8, color: 'text-rose-400' }
 })
 
 const holePoints = computed(() => {
@@ -267,6 +285,7 @@ watch(
                 <span class="mt-0.5 block text-[9px] font-semibold tracking-wide text-slate-400">
                   PLAYING HCP: <strong class="font-bold text-emerald-400">{{ playingHandicap }}</strong>
                 </span>
+                <span class="mt-0.5 block text-[9px] font-bold uppercase tracking-wider" :class="handicapBand.color">{{ handicapBand.label }}</span>
               </div>
             </div>
 
@@ -369,6 +388,9 @@ watch(
                 <span class="text-sm font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                   +{{ shotsReceived }} shots
                 </span>
+              </div>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="text-xs font-bold uppercase tracking-wider" :class="handicapBand.color">{{ handicapBand.label }}</span>
               </div>
             </div>
           </div>
