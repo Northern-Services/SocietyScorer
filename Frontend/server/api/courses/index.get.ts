@@ -1,32 +1,11 @@
-import { db } from '../../utils/db'
+import { db, ok, handleError, getQuery } from '../../utils/api'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event: any) => {
   const query = getQuery(event).q?.toString().trim().toLowerCase() || ''
-
-  let courses: any[] = []
-
-  if (query) {
-    courses = db.prepare(`
-      SELECT id, name, location, numHoles, pars, strokeIndexes 
-      FROM courses 
-      WHERE LOWER(name) LIKE ? OR LOWER(location) LIKE ?
-      ORDER BY name ASC
-      LIMIT 20
-    `).all(`%${query}%`, `%${query}%`)
-  } else {
-    courses = db.prepare(`
-      SELECT id, name, location, numHoles, pars, strokeIndexes 
-      FROM courses 
-      ORDER BY name ASC
-      LIMIT 50
-    `).all()
-  }
-
-  const formattedCourses = courses.map(c => ({
-    ...c,
-    pars: JSON.parse(c.pars || '[]'),
-    strokeIndexes: JSON.parse(c.strokeIndexes || '[]')
-  }))
-
-  return { success: true, courses: formattedCourses }
+  try {
+    const rows: any[] = query
+      ? db.prepare(`SELECT id, name, location, numHoles, pars, strokeIndexes FROM courses WHERE LOWER(name) LIKE ? OR LOWER(location) LIKE ? ORDER BY name ASC LIMIT 20`).all(`%${query}%`, `%${query}%`)
+      : db.prepare(`SELECT id, name, location, numHoles, pars, strokeIndexes FROM courses ORDER BY name ASC LIMIT 50`).all()
+    return ok({ courses: rows.map((c: any) => ({ ...c, pars: JSON.parse(c.pars || '[]'), strokeIndexes: JSON.parse(c.strokeIndexes || '[]') })) })
+  } catch (e: any) { handleError(e) }
 })

@@ -1,31 +1,13 @@
-import { db } from '../../../utils/db'
+import { requireAuth, requireAdmin, db, readBody, ok, handleError, createError, getAuthUserId } from '../../../utils/api'
 
 export default defineEventHandler(async (event) => {
   const courseId = event.context.params?.id
-  const body = await readBody(event)
-  const authUserId = getCookie(event, 'auth_user_id')
-
-  if (!courseId) {
-    throw createError({ statusCode: 400, statusMessage: 'Missing course ID.' })
-  }
-
-  const admin = db.prepare(`SELECT role FROM players WHERE id = ?`).get(authUserId) as any
-  if (!admin || admin.role !== 'ADMIN') {
-    throw createError({ statusCode: 403, statusMessage: 'Admin privileges required.' })
-  }
-
-  const { handicapRules, nextRoundPenalties } = body
-  const rulesJson = JSON.stringify({ handicapRules, nextRoundPenalties })
-
+  const authUserId = getAuthUserId(event)
+  if (!courseId) throw createError({ statusCode: 400, statusMessage: 'Missing course ID.' })
+  requireAdmin(event)
+  const { handicapRules, nextRoundPenalties } = await readBody(event)
   try {
-    db.prepare(`
-      UPDATE courses 
-      SET handicapRules = ?
-      WHERE id = ?
-    `).run(rulesJson, courseId)
-
-    return { success: true, message: 'Course handicap rules saved successfully.' }
-  } catch (err: any) {
-    throw createError({ statusCode: 500, statusMessage: err.message || 'Failed to save course rules.' })
-  }
+    db.prepare(`UPDATE courses SET handicapRules = ? WHERE id = ?`).run(JSON.stringify({ handicapRules, nextRoundPenalties }), courseId)
+    return ok({ success: true, message: 'Course handicap rules saved successfully.' })
+  } catch (e) { handleError(e, 'Failed to save course rules.') }
 })

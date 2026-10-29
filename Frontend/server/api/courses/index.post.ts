@@ -1,52 +1,15 @@
-import { db } from '../../utils/db'
+import { requireAuth, db, readBody, ok, handleError, createError, getAuthUserId } from '../../utils/api'
 import { randomUUID } from 'crypto'
 
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event)
-  const authUserId = getCookie(event, 'auth_user_id')
-
-  const { name, location, numHoles, pars, strokeIndexes, handicapRules } = body
-
-  if (!name || !location) {
-    throw createError({ statusCode: 400, statusMessage: 'Name and location are required.' })
-  }
-
-  // Ensure arrays are stringified correctly before storing in SQLite
-  const parsString = typeof pars === 'string' ? pars : JSON.stringify(pars || [])
-  const siString = typeof strokeIndexes === 'string' ? strokeIndexes : JSON.stringify(strokeIndexes || [])
-  const rulesString = typeof handicapRules === 'string' ? handicapRules : JSON.stringify(handicapRules || {})
-
+  requireAuth(event)
+  const authUserId = getAuthUserId(event)
+  const { name, location, numHoles, pars, strokeIndexes, handicapRules } = await readBody(event)
+  if (!name || !location) throw createError({ statusCode: 400, statusMessage: 'Name and location are required.' })
+  const courseId = randomUUID()
   try {
-    const courseId = randomUUID()
-
-    db.prepare(`
-      INSERT INTO courses (id, name, location, numHoles, pars, strokeIndexes, handicapRules, createdBy)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      courseId,
-      name,
-      location,
-      Number(numHoles || 18),
-      parsString,
-      siString,
-      rulesString,
-      authUserId || 'system'
-    )
-
-    return {
-      success: true,
-      data: {
-        id: courseId,
-        name,
-        location,
-        numHoles: Number(numHoles || 18),
-        pars: parsString,
-        strokeIndexes: siString,
-        handicapRules: rulesString
-      }
-    }
-  } catch (error: any) {
-    console.error('Course Creation Error:', error)
-    throw createError({ statusCode: 500, statusMessage: `Database Error: ${error.message}` })
-  }
+    db.prepare(`INSERT INTO courses (id, name, location, numHoles, pars, strokeIndexes, handicapRules, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(courseId, name, location, Number(numHoles || 18), typeof pars === 'string' ? pars : JSON.stringify(pars || []), typeof strokeIndexes === 'string' ? strokeIndexes : JSON.stringify(strokeIndexes || []), typeof handicapRules === 'string' ? handicapRules : JSON.stringify(handicapRules || {}), authUserId || 'system')
+    return ok({ data: { id: courseId, name, location, numHoles: Number(numHoles || 18), pars, strokeIndexes, handicapRules } })
+  } catch (e: any) { handleError(e, `Database Error: ${e.message}`) }
 })

@@ -1,27 +1,13 @@
-import { db } from '../../utils/db'
+import { db, readBody, ok, handleError } from '../../utils/api'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event: any) => {
   const id = event.context.params?.id
   const method = event.node.req.method
-
   if (method === 'PUT') {
     const body = await readBody(event)
-
     try {
-      db.prepare(`
-        UPDATE players 
-        SET handicapIndex = ?, nextRoundPenalty = ?, active = ?
-        WHERE id = ?
-      `).run(
-        body.handicapIndex,
-        body.nextRoundPenalty ?? 0.0,
-        body.active ? 1 : 0,
-        id
-      )
-
-      return { success: true }
-    } catch (error: any) {
-      throw createError({ statusCode: 500, statusMessage: error.message })
-    }
+      db.prepare(`UPDATE players SET handicapIndex = ?, nextRoundPenalty = ?, active = ? WHERE id = ?`).run(body.handicapIndex, body.nextRoundPenalty ?? 0.0, body.active ? 1 : 0, id)
+      return ok({ success: true })
+    } catch (e: any) { handleError(e, e.message) }
   }
 })

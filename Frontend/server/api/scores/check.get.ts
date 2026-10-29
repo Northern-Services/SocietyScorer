@@ -1,32 +1,12 @@
-import { db } from '../../utils/db'
-
+import { requireAuth, db, ok, handleError, getAuthUserId, getQuery } from '../../utils/api'
 export default defineEventHandler(async (event) => {
-  const authUserId = getCookie(event, 'auth_user_id')
-  const query = getQuery(event)
-  const competitionId = query.competitionId as string
-
-  if (!authUserId || !competitionId) {
-    return { success: false, holeScores: null }
-  }
+  const authUserId = getAuthUserId(event)
+  const { competitionId } = getQuery(event)
+  if (!authUserId || !competitionId) return ok({ success: false, holeScores: null })
 
   try {
-    // Strictly look for a scorecard tied to THIS competition and THIS user
-    const existing = db.prepare(`
-      SELECT holeScores, stablefordPoints 
-      FROM scores 
-      WHERE playerId = ? AND competitionId = ?
-    `).get(authUserId, competitionId) as any
-
-    if (existing) {
-      return {
-        success: true,
-        holeScores: existing.holeScores,
-        stablefordPoints: existing.stablefordPoints
-      }
-    }
-
-    return { success: false, holeScores: null }
-  } catch (err) {
-    return { success: false, holeScores: null }
-  }
+    const existing = db.prepare(`SELECT holeScores, stablefordPoints FROM scores WHERE playerId = ? AND competitionId = ?`).get(authUserId, competitionId) as any
+    if (existing) return ok({ success: true, holeScores: existing.holeScores, stablefordPoints: existing.stablefordPoints })
+    return ok({ success: false, holeScores: null })
+  } catch { return ok({ success: false, holeScores: null }) }
 })
