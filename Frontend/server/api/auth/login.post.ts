@@ -10,8 +10,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const user = db.prepare(`
-    SELECT id, password, active FROM players WHERE username = ?
-  `).get(username.trim().toLowerCase()) as any
+    SELECT id, password, active FROM players WHERE LOWER(username) = LOWER(?)
+  `).get(username.trim()) as any
 
   if (!user || !user.active) {
     throw createError({ statusCode: 401, statusMessage: 'Invalid username or password.' })
