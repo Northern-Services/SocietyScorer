@@ -10,6 +10,12 @@ const searchLoading = ref(false)
 const showSearchDropdown = ref(false)
 const searchContainerRef = ref<HTMLElement | null>(null)
 
+// Notification State (Friend Requests)
+const notificationsContainerRef = ref<HTMLElement | null>(null)
+const showNotifications = ref(false)
+const pendingRequests = ref<any[]>([])
+const notificationsLoading = ref(false)
+
 // Mobile Menu Drawer State
 const showMobileMenu = ref(false)
 
@@ -31,6 +37,8 @@ watch(() => route.fullPath, () => {
   showSearchDropdown.value = false
   searchQuery.value = ''
   showMobileMenu.value = false
+  showNotifications.value = false
+  fetchNotifications()
 })
 
 const isLoggedIn = computed(() => !!userRes.value?.success && !!userRes.value?.data)
@@ -109,6 +117,52 @@ const handleClickOutside = (event: MouseEvent) => {
   if (searchContainerRef.value && !searchContainerRef.value.contains(event.target as Node)) {
     showSearchDropdown.value = false
   }
+  if (notificationsContainerRef.value && !notificationsContainerRef.value.contains(event.target as Node)) {
+    showNotifications.value = false
+  }
+}
+
+// Fetch Pending Friend Requests (Notifications)
+const fetchNotifications = async () => {
+  if (!user.value?.id) return
+  notificationsLoading.value = true
+  try {
+    const res: any = await $fetch('/api/friends/list')
+    if (res?.success) {
+      pendingRequests.value = res.pendingRequests || []
+    }
+  } catch (err) {
+    console.error('Failed to fetch notifications', err)
+  } finally {
+    notificationsLoading.value = false
+  }
+}
+
+// Accept a friend request
+const handleAcceptRequest = async (friendshipId: string, requesterId: string) => {
+  try {
+    await $fetch('/api/friends/action', {
+      method: 'POST',
+      body: { targetUserId: requesterId, action: 'ACCEPT' }
+    })
+    await fetchNotifications()
+    await refreshUser()
+  } catch (err: any) {
+    alert(err?.data?.statusMessage || 'Failed to accept request.')
+  }
+}
+
+// Refuse (remove) a friend request
+const handleRefuseRequest = async (friendshipId: string, requesterId: string) => {
+  try {
+    await $fetch('/api/friends/action', {
+      method: 'POST',
+      body: { targetUserId: requesterId, action: 'REMOVE' }
+    })
+    await fetchNotifications()
+  } catch (err: any) {
+    alert(err?.data?.statusMessage || 'Failed to refuse request.')
+  }
 }
 
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -116,10 +170,12 @@ const handleKeyDown = (e: KeyboardEvent) => {
     showSearchDropdown.value = false
     showSettingsModal.value = false
     showMobileMenu.value = false
+    showNotifications.value = false
   }
 }
 
 onMounted(() => {
+  fetchNotifications()
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('keydown', handleKeyDown)
 })
@@ -209,6 +265,68 @@ const items = computed(() => {
 
         <!-- LOGGED IN CONTROLS -->
         <template v-else>
+          <!-- Notification Bell -->
+          <div ref="notificationsContainerRef" class="relative">
+            <button
+              @click="showNotifications = !showNotifications"
+              class="w-8 h-8 shrink-0 rounded-xl border border-slate-800/90 hover:border-emerald-500/50 flex items-center justify-center transition-all group cursor-pointer text-left shadow-inner relative"
+            >
+              <UIcon name="i-heroicons-bell" class="w-4 h-4 text-slate-400 group-hover:text-emerald-400 transition-colors" />
+              <span v-if="pendingRequests.length > 0" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-950"></span>
+            </button>
+
+            <!-- Notification Dropdown -->
+            <transition name="dropdown">
+              <div v-if="showNotifications" class="absolute top-full right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden z-50 p-2 space-y-1">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-800/80 mb-1">
+                  <h3 class="text-xs font-bold text-white uppercase tracking-wider">Friend Requests</h3>
+                  <span class="text-[10px] text-slate-500 font-bold">{{ pendingRequests.length }}</span>
+                </div>
+
+                <div v-if="notificationsLoading" class="p-2 text-center text-[11px] text-slate-400">Loading...</div>
+
+                <div v-else-if="pendingRequests.length === 0" class="p-3 text-center text-[11px] text-slate-500">
+                  No new friend requests.
+                </div>
+
+                <div v-else class="space-y-1">
+                  <div
+                    v-for="req in pendingRequests"
+                    :key="req.friendshipId"
+                    class="p-2 bg-slate-800/50 border border-slate-700/50 rounded-xl space-y-1"
+                  >
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="flex items-center gap-2 min-w-0">
+                        <div class="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+                          {{ req.name.charAt(0).toUpperCase() }}
+                        </div>
+                        <div class="leading-tight min-w-0">
+                          <span class="text-xs font-bold text-white truncate block">{{ req.name }}</span>
+                          <span class="text-[9px] text-slate-400 truncate block">@{{ req.username }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p class="text-[10px] text-slate-400 leading-relaxed">has requested to be your friend!</p>
+                    <div class="flex gap-1 pt-1">
+                      <button
+                        @click="handleAcceptRequest(req.friendshipId, req.friendId)"
+                        class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold rounded-lg shadow-sm shadow-emerald-600/20 transition-all cursor-pointer active:scale-95"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        @click="handleRefuseRequest(req.friendshipId, req.friendId)"
+                        class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer active:scale-95"
+                      >
+                        Refuse
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </transition>
+          </div>
+
           <button
             @click="showSettingsModal = true"
             class="w-8 h-8 shrink-0 rounded-xl border border-slate-800/90 hover:border-emerald-500/50 flex items-center justify-center transition-all group cursor-pointer text-left shadow-inner"
