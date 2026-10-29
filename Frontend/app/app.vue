@@ -7,7 +7,7 @@ const route = useRoute()
 // Mobile bottom tab navigation
 const tabs = [
   { label: 'Dashboard', to: '/dashboard', icon: 'i-lucide-house' },
-  { label: 'Scorecard', to: '/scorecard', icon: 'i-heroicons-pencil-square' },
+  { label: 'Scorecard', to: '/courses', icon: 'i-heroicons-pencil-square' },
   { label: 'Competitions', to: '/competitions', icon: 'i-heroicons-trophy' },
   { label: 'Members', to: '/members', icon: 'i-heroicons-user-group' },
   { label: 'More', to: '/more', icon: 'i-heroicons-ellipsis-vertical' }

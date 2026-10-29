@@ -61,7 +61,7 @@ const metrics = computed(() => [
           <UButton to="/dashboard" color="success" variant="solid" size="sm" icon="i-lucide-house" class="font-bold w-full sm:w-auto shadow-lg shadow-emerald-500/20">
             Enter Dashboard
           </UButton>
-          <UButton to="/scorecard" color="success" variant="soft" size="sm" icon="i-heroicons-pencil-square" class="font-semibold w-full sm:w-auto">
+          <UButton to="/courses" color="success" variant="soft" size="sm" icon="i-heroicons-pencil-square" class="font-semibold w-full sm:w-auto">
             Start Scorecard
           </UButton>
         </div>
