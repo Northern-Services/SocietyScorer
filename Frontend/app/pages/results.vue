@@ -28,72 +28,82 @@ const downloadPDF = () => {
 </script>
 
 <template>
-  <UContainer class="py-12 max-w-4xl mx-auto space-y-8">
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+  <div class="px-3 py-4 space-y-5 pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]">
+
+    <!-- Page Header -->
+    <div class="flex flex-col items-start justify-between gap-3">
       <div>
-        <h1 class="text-2xl font-bold text-white">Competition Results</h1>
-        <p class="text-sm text-slate-400">Official Leaderboard & 2’s Club</p>
+        <h1 class="text-xl font-bold text-white">Competition Results</h1>
+        <p class="text-[11px] text-slate-400">Official Leaderboard & 2’s Club</p>
       </div>
-      <div class="flex items-center gap-3 w-full sm:w-auto">
-        <USelect v-model="selectedCompetition" :options="competitions" size="md" class="w-full sm:w-60" />
-        <UButton @click="downloadPDF" :loading="downloading" color="emerald" icon="i-heroicons-document-arrow-down" class="font-semibold">
+      <div class="flex items-center gap-2 w-full">
+        <USelect v-model="selectedCompetition" :options="competitions" size="xs" class="w-full" />
+        <UButton @click="downloadPDF" :loading="downloading" color="emerald" icon="i-heroicons-document-arrow-down" size="xs" class="font-semibold">
           PDF
         </UButton>
       </div>
     </div>
 
-    <!-- Leaderboard Table -->
+    <!-- Leaderboard (mobile cards instead of table) -->
     <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-      <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-        <h3 class="font-semibold text-white">Stableford Leaderboard</h3>
-        <UBadge color="emerald" variant="subtle">Status: Live / Open</UBadge>
+      <div class="p-3 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+        <h3 class="text-xs font-semibold text-white">Stableford Leaderboard</h3>
+        <UBadge color="emerald" variant="subtle" size="xs">Live</UBadge>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse text-sm">
-          <thead>
-            <tr class="border-b border-slate-800 text-slate-400 font-medium bg-slate-950/40">
-              <th class="p-4">Pos</th>
-              <th class="p-4">Player</th>
-              <th class="p-4 text-center">Points</th>
-              <th class="p-4 text-center">HCP Before</th>
-              <th class="p-4 text-center">HCP After</th>
-              <th class="p-4 text-center">Penalty</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-800">
-            <tr v-for="row in leaderboard" :key="row.pos" class="hover:bg-slate-800/40 transition-colors">
-              <td class="p-4 font-bold text-white">{{ row.pos }}</td>
-              <td class="p-4 font-semibold text-white flex items-center gap-2">
-                {{ row.name }}
-                <span v-if="row.pos === 1" class="text-xs">🏆</span>
-              </td>
-              <td class="p-4 text-center font-bold text-emerald-400 text-base">{{ row.points }}</td>
-              <td class="p-4 text-center text-slate-300">{{ row.before }}</td>
-              <td class="p-4 text-center font-semibold text-white">{{ row.after }}</td>
-              <td class="p-4 text-center text-slate-400">{{ row.penalty > 0 ? `+${row.penalty}` : '-' }}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="divide-y divide-slate-800">
+        <div
+          v-for="row in leaderboard"
+          :key="row.pos"
+          class="p-3 flex items-center justify-between hover:bg-slate-800/40 transition-colors"
+        >
+          <div class="flex items-center gap-2.5">
+            <div
+              class="w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0"
+              :class="row.pos === 1 ? 'bg-amber-500 text-slate-950' : row.pos === 2 ? 'bg-slate-300 text-slate-950' : row.pos === 3 ? 'bg-orange-500 text-white' : 'bg-slate-900 text-slate-400 border border-slate-700'"
+            >
+              #{{ row.pos }}
+            </div>
+            <div class="min-w-0">
+              <span class="text-sm font-bold text-white block">{{ row.name }}</span>
+              <span v-if="row.pos === 1" class="text-[10px] text-amber-400">🏆 Winner</span>
+            </div>
+          </div>
+
+          <div class="text-right flex flex-col items-end gap-0.5">
+            <span class="text-xs font-bold text-emerald-400">{{ row.points }}</span>
+            <span class="text-[9px] uppercase font-bold text-slate-500 block">pts</span>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Two's Club Section -->
-    <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
+    <div class="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-3">
       <div class="flex items-center gap-2">
         <span class="text-xl">🎯</span>
-        <h3 class="font-semibold text-white text-lg">2’s Club Pot</h3>
+        <h3 class="font-semibold text-white text-sm">2’s Club Pot</h3>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div v-for="(two, idx) in twosClub" :key="idx" class="bg-slate-800/50 border border-slate-700/50 p-4 rounded-xl flex items-center justify-between">
-          <span class="font-medium text-white">{{ two.name }}</span>
-          <div class="flex gap-1.5">
-            <span v-for="hole in two.holes" :key="hole" class="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-md text-xs font-semibold">
+
+      <div class="space-y-2">
+        <div
+          v-for="(two, idx) in twosClub"
+          :key="idx"
+          class="bg-slate-800/50 border border-slate-700/50 p-2 rounded-xl flex items-center justify-between"
+        >
+          <span class="text-sm font-medium text-white">{{ two.name }}</span>
+          <div class="flex gap-1">
+            <span
+              v-for="hole in two.holes"
+              :key="hole"
+              class="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-md text-[10px] font-semibold"
+            >
               Hole {{ hole }}
             </span>
           </div>
         </div>
       </div>
     </div>
-  </UContainer>
+
+  </div>
 </template>

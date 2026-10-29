@@ -25,5 +25,11 @@ logs
 
 /Frontend/node_modules/
 /Frontend/server/database/*.db
+
 /Frontend/data/*.db
+
+# Nuxtjs weird temp database files
+/Frontend/data/*.db-shm
+/Frontend/data/*.db-wal
+
 /Frontend/*.zip
