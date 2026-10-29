@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { calculatePlayingHandicap, calculateHoleStableford, calculateFullScorecard } from '../../server/utils/handicap'
+import { calculatePlayingHandicap, calculateHoleStableford, calculateFullScorecard, calculateEarlybirdsHandicapCut } from '../../server/utils/handicap'
 
 const route = useRoute()
 const competitionId = route.query.competitionId as string
@@ -160,7 +160,29 @@ const submitScorecard = async () => {
       }
     })
     if (res?.success) {
-      successMessage.value = 'Round saved successfully!'
+      // Calculate new handicap based on the round just played
+      const currentHcp = Number(currentUser.value?.handicapIndex || 0)
+      const points = totalStablefordPoints.value
+      const cut = calculateEarlybirdsHandicapCut(currentHcp, points, 'other')
+      const newHandicapIndex = cut.newHandicapIndex
+
+      // Update the player's handicap index on the server
+      try {
+        if (currentUser.value?.id) {
+          await $fetch(`/api/players/${currentUser.value.id}`, {
+            method: 'PUT',
+            body: {
+              handicapIndex: newHandicapIndex,
+              nextRoundPenalty: cut.nextRoundPenalty,
+              name: currentUser.value.name
+            }
+          })
+        }
+      } catch (err) {
+        console.error('Failed to update handicap after round:', err)
+      }
+
+      successMessage.value = `Round saved! New handicap: ${newHandicapIndex}`
       setTimeout(() => {
         navigateTo('/dashboard')
       }, 1500)
