@@ -5,9 +5,11 @@ definePageMeta({
   middleware: 'admin'
 })
 
-const activePanel = ref<'competitions' | 'courses' | 'players' | 'rules' | null>(null)
+// ---------- STATE ----------
+const activeSection = ref<'overview' | 'users' | 'competitions' | 'courses' | 'audit' | 'settings'>('overview')
 
 const formatUKDate = (isoString: string) => {
+  if (!isoString) return ''
   const d = new Date(isoString)
   if (isNaN(d.getTime())) return isoString
   const day = String(d.getDate()).padStart(2, '0')
@@ -18,15 +20,190 @@ const formatUKDate = (isoString: string) => {
   return `${day}/${month}/${year} at ${hours}:${mins}`
 }
 
+const formatUKDateOnly = (isoString: string) => {
+  if (!isoString) return ''
+  const d = new Date(isoString)
+  if (isNaN(d.getTime())) return isoString
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
+// ---------- AUDIT LOG (client-side, persists to localStorage) ----------
+const AUDIT_STORAGE_KEY = 'admin_audit_log'
+const isClient = typeof window !== 'undefined'
+const loadAuditLog = (): any[] => {
+  try {
+    const raw = isClient ? localStorage.getItem(AUDIT_STORAGE_KEY) : null
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+const saveAuditLog = (logs: any[]) => {
+  try {
+    if (isClient) localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify(logs.slice(0, 200)))
+  } catch {
+    console.error('Failed to persist audit log')
+  }
+}
+
+const auditLog = ref<any[]>(loadAuditLog())
+let auditCounter = auditLog.value.length
+const addAuditLog = (action: string, target: string, details: string = '') => {
+  try {
+    auditLog.value.unshift({
+      id: `audit-${Date.now()}-${auditCounter++}`,
+      timestamp: new Date().toISOString(),
+      action,
+      target,
+      details,
+      admin: 'Admin'
+    })
+    saveAuditLog(auditLog.value)
+  } catch (e) {
+    console.error('Audit log error:', e)
+  }
+}
+
+// ---------- SERVER / SYSTEM STATS ----------
+const serverStats = ref<any>(null)
+const statsLoading = ref(false)
+
+const fetchServerStats = async () => {
+  statsLoading.value = true
+  try {
+    const res: any = await $fetch('/api/stats')
+    serverStats.value = res?.data || { totalPlayers: 0, totalCompetitions: 0, totalPrizePool: 0 }
+  } catch (err) {
+    console.error('Failed to fetch server stats', err)
+    serverStats.value = { totalPlayers: 0, totalCompetitions: 0, totalPrizePool: 0 }
+  } finally {
+    statsLoading.value = false
+  }
+}
+
+// ---------- USERS ----------
+const { data: playersRes, refresh: refreshPlayers } = await useFetch('/api/players')
+const players = computed(() => playersRes.value?.data || [])
+const userSearch = ref('')
+const filteredUsers = computed(() =>
+  players.value.filter((p: any) => p.name.toLowerCase().includes(userSearch.value.toLowerCase()) || p.username.toLowerCase().includes(userSearch.value.toLowerCase()))
+)
+
+const updateUserRecord = async (player: any) => {
+  try {
+    await $fetch(`/api/players/${player.id}`, {
+      method: 'PUT',
+      body: {
+        handicapIndex: player.handicapIndex,
+        nextRoundPenalty: player.nextRoundPenalty || 0.0,
+        active: player.active ? 1 : 0
+      }
+    })
+    addAuditLog('UPDATE_USER', player.name, `HCP: ${player.handicapIndex}, Active: ${player.active}`)
+  } catch (err) {
+    alert('Failed to update user')
+  }
+}
+
+// ---------- COMPETITIONS ----------
 const { data: compRes, refresh: refreshCompetitions } = await useFetch('/api/competitions')
 const competitions = computed(() => compRes.value?.data || [])
-const compSearch = ref('')
-const filteredCompetitions = computed(() => competitions.value.filter((c: any) => c.name.toLowerCase().includes(compSearch.value.toLowerCase())))
 
-const showAddComp = ref(false)
+const toggleCompStatus = async (comp: any) => {
+  const newStatus = comp.status === 'OPEN' ? 'CLOSED' : 'OPEN'
+  try {
+    await $fetch(`/api/competitions/${comp.id}`, { method: 'PUT', body: { status: newStatus } })
+    await refreshCompetitions()
+    addAuditLog('TOGGLE_COMPETITION', comp.name, `Status: ${newStatus}`)
+  } catch (err) {
+    alert('Failed to update competition status')
+  }
+}
+
+// ---------- COURSES ----------
+const courses = ref<any[]>([])
+const fetchCourses = async () => {
+  try {
+    const res: any = await $fetch('/api/courses')
+    if (res?.success) courses.value = res.courses
+  } catch (err) {
+    console.error('Failed to fetch courses', err)
+  }
+}
+
+// ---------- MANAGE USER MODAL ----------
+const showManageUserModal = ref(false)
+const editingUser = ref<any>(null)
+const editUserName = ref('')
+const editUserHcp = ref(0)
+
+const openManageUserModal = (player: any) => {
+  editingUser.value = player
+  editUserName.value = player.name || ''
+  editUserHcp.value = Number(player.handicapIndex || 0)
+  showManageUserModal.value = true
+}
+
+const saveManagedUser = async () => {
+  if (!editingUser.value?.id) return
+  try {
+    await $fetch(`/api/players/${editingUser.value.id}`, {
+      method: 'PUT',
+      body: {
+        name: editUserName.value.trim(),
+        handicapIndex: editUserHcp.value,
+        nextRoundPenalty: editingUser.value.nextRoundPenalty || 0.0,
+        active: editingUser.value.active ? 1 : 0
+      }
+    })
+    await refreshPlayers()
+    showManageUserModal.value = false
+    addAuditLog('UPDATE_USER', editUserName.value, `HCP: ${editUserHcp.value}`)
+  } catch (err) {
+    alert('Failed to update user')
+  }
+}
+
+// ---------- CREATE USER MODAL ----------
+const showCreateUserModal = ref(false)
+const newUserName = ref('')
+const newUserUsername = ref('')
+const newUserPassword = ref('')
+
+const createUser = async () => {
+  if (!newUserName.value || !newUserUsername.value || !newUserPassword.value) {
+    alert('Please fill in all fields.')
+    return
+  }
+  try {
+    await $fetch('/api/auth/register', {
+      method: 'POST',
+      body: {
+        name: newUserName.value.trim(),
+        username: newUserUsername.value.trim().toLowerCase(),
+        password: newUserPassword.value,
+        handicapIndex: 18.0
+      }
+    })
+    await refreshPlayers()
+    showCreateUserModal.value = false
+    newUserName.value = ''
+    newUserUsername.value = ''
+    newUserPassword.value = ''
+    addAuditLog('CREATE_USER', newUserName.value, 'New member registered')
+  } catch (err: any) {
+    alert(err?.data?.statusMessage || 'Failed to create user.')
+  }
+}
+
+// ---------- CREATE COMPETITION MODAL ----------
+const showCreateCompModal = ref(false)
 const newCompName = ref('')
-const newCompDate = ref('')
 const newCompCourseId = ref('')
+const newCompDate = ref('')
 const newCompPrize1st = ref<number | string>('')
 const newCompPrize2nd = ref<number | string>('')
 const newCompPrize3rd = ref<number | string>('')
@@ -39,44 +216,33 @@ const createCompetition = async () => {
   try {
     await $fetch('/api/competitions', {
       method: 'POST',
-      body: { name: newCompName.value, courseId: newCompCourseId.value || null, date: newCompDate.value, prize1st: Number(newCompPrize1st.value) || 0, prize2nd: Number(newCompPrize2nd.value) || 0, prize3rd: Number(newCompPrize3rd.value) || 0 }
+      body: {
+        name: newCompName.value,
+        courseId: newCompCourseId.value || null,
+        date: newCompDate.value,
+        prize1st: Number(newCompPrize1st.value) || 0,
+        prize2nd: Number(newCompPrize2nd.value) || 0,
+        prize3rd: Number(newCompPrize3rd.value) || 0
+      }
     })
+    await refreshCompetitions()
+    showCreateCompModal.value = false
     newCompName.value = ''
     newCompCourseId.value = ''
     newCompDate.value = ''
     newCompPrize1st.value = ''
     newCompPrize2nd.value = ''
     newCompPrize3rd.value = ''
-    showAddComp.value = false
-    await refreshCompetitions()
+    addAuditLog('CREATE_COMPETITION', newCompName.value, 'New fixture scheduled')
   } catch (err: any) {
-    alert(err?.data?.statusMessage || err?.statusMessage || 'Failed to create fixture')
+    alert(err?.data?.statusMessage || 'Failed to create competition.')
   }
 }
 
-const toggleCompStatus = async (comp: any) => {
-  const newStatus = comp.status === 'OPEN' ? 'CLOSED' : 'OPEN'
-  try {
-    await $fetch(`/api/competitions/${comp.id}`, { method: 'PUT', body: { status: newStatus } })
-    await refreshCompetitions()
-  } catch (err) {
-    alert('Failed to update competition status')
-  }
-}
-
-const courses = ref<any[]>([])
-const fetchCourses = async () => {
-  try {
-    const res: any = await $fetch('/api/courses')
-    if (res?.success) courses.value = res.courses
-  } catch (err) {
-    console.error('Failed to fetch courses', err)
-  }
-}
-
-const showAddCourse = ref(false)
-const newCourseName = ref('Blackwood Hamilton')
-const newCourseLocation = ref('Bangor')
+// ---------- CREATE COURSE MODAL ----------
+const showCreateCourseModal = ref(false)
+const newCourseName = ref('')
+const newCourseLocation = ref('')
 const newCourseNumHoles = ref(18)
 const newCoursePars = ref([4, 5, 3, 4, 4, 4, 3, 4, 5, 4, 4, 3, 4, 5, 4, 3, 4, 4])
 const newCourseSI = ref([6, 12, 8, 18, 2, 14, 10, 4, 16, 5, 9, 13, 1, 17, 3, 7, 11, 15])
@@ -87,531 +253,586 @@ const handleHoleCountChange = (count: number) => {
   newCourseSI.value = Array.from({ length: count }, (_, i) => i + 1)
 }
 
-const createCourse = async () => {
+const saveNewCourse = async () => {
   if (!newCourseName.value || !newCourseLocation.value) {
     alert('Please enter course name and location.')
     return
   }
-  const payload = { name: newCourseName.value, location: newCourseLocation.value, numHoles: newCourseNumHoles.value, pars: newCoursePars.value, strokeIndexes: newCourseSI.value }
+  const payload = {
+    name: newCourseName.value,
+    location: newCourseLocation.value,
+    numHoles: newCourseNumHoles.value,
+    pars: newCoursePars.value,
+    strokeIndexes: newCourseSI.value
+  }
   try {
-    const res: any = await $fetch('/api/courses', { method: 'POST', body: payload })
+    const res: any = await $fetch('/api/courses', {
+      method: 'POST',
+      body: payload
+    })
     if (res.success) {
-      showAddCourse.value = false
+      showCreateCourseModal.value = false
       await fetchCourses()
+      addAuditLog('CREATE_COURSE', newCourseName.value, `${newCourseNumHoles.value} holes`)
     }
   } catch (err: any) {
     alert(err?.data?.statusMessage || err?.statusMessage || 'Failed to save course.')
   }
 }
 
-const { data: playerRes, refresh: refreshPlayers } = await useFetch('/api/players')
-const players = computed(() => playerRes.value?.data || [])
-const playerSearch = ref('')
-const filteredPlayers = computed(() => players.value.filter((p: any) => p.name.toLowerCase().includes(playerSearch.value.toLowerCase())))
-
-const showAddPlayer = ref(false)
-const newPlayerName = ref('')
-const newPlayerHcp = ref(18.0)
-const newPlayerUsername = ref('')
-const newPlayerPassword = ref('password123')
-
-const createPlayer = async () => {
-  if (!newPlayerName.value || !newPlayerUsername.value) return
-  try {
-    await $fetch('/api/auth/register', { method: 'POST', body: { name: newPlayerName.value, username: newPlayerUsername.value, password: newPlayerPassword.value, handicapIndex: newPlayerHcp.value } })
-    newPlayerName.value = ''
-    newPlayerUsername.value = ''
-    newPlayerHcp.value = 18.0
-    showAddPlayer.value = false
-    await refreshPlayers()
-  } catch (err: any) {
-    alert(err?.data?.statusMessage || 'Failed to register player')
-  }
-}
-
-const updatePlayerRecord = async (player: any) => {
-  try {
-    await $fetch(`/api/players/${player.id}`, { method: 'PUT', body: { handicapIndex: player.handicapIndex, nextRoundPenalty: player.nextRoundPenalty || 0.0, active: player.active ? 1 : 0 } })
-  } catch (err) {
-    console.error('Failed to sync player update', err)
-  }
-}
-
-const handicapRules = ref([
-  { id: 1, label: 'Winner / Big Cut', minPts: 40, maxPts: 60, adjustment: -2.0, desc: 'Score ≥ 40 pts' },
-  { id: 2, label: 'Medium Cut', minPts: 37, maxPts: 39, adjustment: -1.0, desc: 'Score 37–39 pts' },
-  { id: 3, label: 'Small Cut', minPts: 35, maxPts: 36, adjustment: -0.5, desc: 'Score 35–36 pts' },
-  { id: 4, label: 'Neutral Buffer', minPts: 30, maxPts: 34, adjustment: 0.0, desc: 'Score 30–34 pts' },
-  { id: 5, label: 'HCP Increase', minPts: 0, maxPts: 29, adjustment: +0.5, desc: 'Score < 30 pts' }
-])
-
-const saveSuccess = ref(false)
-const triggerToast = () => {
-  saveSuccess.value = true
-  setTimeout(() => { saveSuccess.value = false }, 3000)
-}
-
-// Course Rules Modal State
-const showEditCourseModal = ref<boolean>(false)
-const editingCourse = ref<any>(null)
-const updatingCourseRules = ref<boolean>(false)
-
-const editHandicapRules = ref([
-  { id: 'band1', label: 'Band 1 (HCP 0–6)', minPts: 0, maxPts: 6, bandRate: 0.2 },
-  { id: 'band2', label: 'Band 2 (HCP 7–12)', minPts: 7, maxPts: 12, bandRate: 0.4 },
-  { id: 'band3', label: 'Band 3 (HCP 13–18)', minPts: 13, maxPts: 18, bandRate: 0.6 },
-  { id: 'band4', label: 'Band 4 (HCP 19–32)', minPts: 19, maxPts: 32, bandRate: 0.8 }
-])
-
-const editPenalties = ref({
-  firstPlace: -3,
-  secondPlace: -2,
-  thirdPlace: -1,
-  others: 0
+onMounted(() => {
+  fetchServerStats()
+  fetchCourses()
 })
 
-const editCourseRules = (course: any) => {
-  editingCourse.value = course
-  if (course?.handicapRules) {
-    try {
-      const parsed = typeof course.handicapRules === 'string' ? JSON.parse(course.handicapRules) : course.handicapRules
-      if (parsed.bands || parsed.handicapRules) {
-        editHandicapRules.value = parsed.bands || parsed.handicapRules
-      }
-      if (parsed.penalties || parsed.nextRoundPenalties) {
-        editPenalties.value = parsed.penalties || parsed.nextRoundPenalties
-      }
-    } catch (e) {
-      console.error('Failed to parse course rules JSON:', e)
-    }
-  }
-  showEditCourseModal.value = true
-}
-
-const updateCourseRules = async () => {
-  if (!editingCourse.value?.id) return
-  updatingCourseRules.value = true
-  try {
-    const rulesPayload = { bands: editHandicapRules.value, penalties: editPenalties.value }
-    await $fetch(`/api/courses/${editingCourse.value.id}/rules`, {
-      method: 'PUT',
-      body: { handicapRules: JSON.stringify(rulesPayload) }
-    })
-    showEditCourseModal.value = false
-    await fetchCourses()
-    triggerToast()
-  } catch (err: any) {
-    alert(err?.data?.statusMessage || err?.statusMessage || 'Failed to update course rules.')
-  } finally {
-    updatingCourseRules.value = false
-  }
-}
-
-const closeModal = () => {
-  showEditCourseModal.value = false
-  editingCourse.value = null
-}
-
-onMounted(() => { fetchCourses() })
+// ---------- NAVIGATION ----------
+const navItems = [
+  { key: 'overview', label: 'Dashboard', icon: 'i-heroicons-chart-bar', color: 'text-indigo-400' },
+  { key: 'users', label: 'Members', icon: 'i-heroicons-user-group', color: 'text-emerald-400' },
+  { key: 'competitions', label: 'Fixtures', icon: 'i-heroicons-trophy', color: 'text-amber-400' },
+  { key: 'courses', label: 'Courses', icon: 'i-heroicons-flag', color: 'text-blue-400' },
+  { key: 'audit', label: 'Audit Log', icon: 'i-heroicons-document-text', color: 'text-purple-400' },
+  { key: 'settings', label: 'Settings', icon: 'i-heroicons-cog-6-tooth', color: 'text-slate-400' }
+]
 </script>
 
 <template>
-  <div class="px-3 py-4 space-y-5 pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]">
+  <div class="bg-[#0f172a] text-slate-200 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white relative overflow-x-hidden pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]">
 
-    <!-- Admin Portal Header -->
-    <div class="relative bg-slate-900/90 border border-slate-800/90 p-3 rounded-3xl backdrop-blur-2xl shadow-2xl overflow-hidden">
-      <div class="pointer-events-none absolute -right-8 -top-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-[40px]"></div>
-
-      <div class="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-lg">👑 Admin Portal</span>
-            <UBadge color="success" variant="subtle" size="xs">SQLite Live Sync</UBadge>
-          </div>
-          <h1 class="text-lg sm:text-xl font-black text-white tracking-tight mt-1">Society Management</h1>
-          <p class="text-[11px] text-slate-400 mt-1">Configure tournaments, course directories, member handicaps, and scoring matrix rules.</p>
-        </div>
-
-        <div class="flex items-center gap-2 w-full sm:w-auto">
-          <UButton @click="triggerToast" color="success" variant="solid" size="sm" icon="i-heroicons-check" class="font-bold shadow-lg shadow-emerald-500/25 cursor-pointer w-full sm:w-auto">
-            Save All Changes
-          </UButton>
-        </div>
-      </div>
-    </div>
-
-    <!-- Success Toast -->
-    <Transition name="fade">
-      <div v-if="saveSuccess" class="sticky top-4 z-50 bg-emerald-500/15 border border-emerald-500/30 p-2.5 rounded-2xl text-emerald-300 text-[11px] font-semibold flex items-center justify-between shadow-2xl backdrop-blur-xl">
+    <!-- Admin Header -->
+    <header class="relative z-20 w-full px-3 pt-3 pb-1.5 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80">
+      <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
-          <UIcon name="i-heroicons-check-circle" class="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>Database records synchronized successfully.</span>
+          <button
+            @click="activeSection = 'overview'"
+            class="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center hover:bg-indigo-500/40 transition-colors cursor-pointer"
+          >
+            <UIcon name="i-lucide-house" class="w-4 h-4" />
+          </button>
+          <div class="flex items-center gap-2 group cursor-pointer">
+            <div class="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center">
+              <UIcon name="i-heroicons-shield-check" class="w-4 h-4" />
+            </div>
+            <span class="font-black text-white tracking-tight text-sm sm:text-base">Admin</span>
+          </div>
         </div>
-        <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Live Sync</span>
       </div>
-    </Transition>
+    </header>
 
-    <!-- Back Button -->
-    <div v-if="activePanel !== null" class="flex items-center justify-between bg-slate-900/60 border border-slate-800 p-2.5 rounded-2xl">
-      <UButton @click="activePanel = null" color="neutral" variant="ghost" icon="i-heroicons-arrow-left" size="xs" class="font-bold cursor-pointer text-slate-300 hover:text-white" />
-      <span class="text-[11px] text-emerald-400 font-bold uppercase tracking-widest">Workspace: {{ activePanel }}</span>
-    </div>
+    <!-- Main Sections -->
+    <main class="px-3 space-y-4">
 
-    <!-- Workspace Cards Grid (2-col on mobile) -->
-    <div v-if="activePanel === null" class="grid grid-cols-1 gap-3">
-      <button @click="activePanel = 'competitions'" class="group text-left bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 p-3 rounded-3xl backdrop-blur-xl shadow-xl transition-all duration-300 flex flex-col justify-between space-y-3 cursor-pointer relative overflow-hidden">
-        <div class="flex items-start justify-between w-full relative z-10">
-          <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-            <UIcon name="i-heroicons-trophy" class="w-5 h-5" />
-          </div>
-          <UBadge color="success" variant="subtle" size="xs">{{ competitions.length }} Fixtures</UBadge>
-        </div>
-        <div class="space-y-1 relative z-10">
-          <h2 class="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">Fixtures & Competitions</h2>
-          <p class="text-[11px] text-slate-400">Schedule society tournaments, link course parameters, control live scoring windows.</p>
-        </div>
-        <div class="flex items-center gap-1 text-[10px] font-bold text-emerald-400 pt-1 relative z-10">
-          <span>Open Manager</span>
-          <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-        </div>
-      </button>
+      <!-- ============ OVERVIEW / DASHBOARD ============ -->
+      <section v-if="activeSection === 'overview'" class="space-y-4">
 
-      <button @click="activePanel = 'courses'" class="group text-left bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 p-3 rounded-3xl backdrop-blur-xl shadow-xl transition-all duration-300 flex flex-col justify-between space-y-3 cursor-pointer relative overflow-hidden">
-        <div class="flex items-start justify-between w-full relative z-10">
-          <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-            <UIcon name="i-heroicons-flag" class="w-5 h-5" />
-          </div>
-          <UBadge color="success" variant="subtle" size="xs">{{ courses.length }} Courses</UBadge>
-        </div>
-        <div class="space-y-1 relative z-10">
-          <h2 class="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">Course Directory & Rules</h2>
-          <p class="text-[11px] text-slate-400">Manage 18-hole par ratings, stroke indexes (S.I. 1–18), custom handicap cut rules.</p>
-        </div>
-        <div class="flex items-center gap-1 text-[10px] font-bold text-emerald-400 pt-1 relative z-10">
-          <span>Manage Courses</span>
-          <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-        </div>
-      </button>
-
-      <button @click="activePanel = 'players'" class="group text-left bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 p-3 rounded-3xl backdrop-blur-xl shadow-xl transition-all duration-300 flex flex-col justify-between space-y-3 cursor-pointer relative overflow-hidden">
-        <div class="flex items-start justify-between w-full relative z-10">
-          <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-            <UIcon name="i-heroicons-user-group" class="w-5 h-5" />
-          </div>
-          <UBadge color="success" variant="subtle" size="xs">{{ players.length }} Members</UBadge>
-        </div>
-        <div class="space-y-1 relative z-10">
-          <h2 class="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">Member Directory</h2>
-          <p class="text-[11px] text-slate-400">Inspect player handicaps, toggle active membership, assign next-round penalty strokes.</p>
-        </div>
-        <div class="flex items-center gap-1 text-[10px] font-bold text-emerald-400 pt-1 relative z-10">
-          <span>Manage Members</span>
-          <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-        </div>
-      </button>
-
-      <button @click="activePanel = 'rules'" class="group text-left bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 p-3 rounded-3xl backdrop-blur-xl shadow-xl transition-all duration-300 flex flex-col justify-between space-y-3 cursor-pointer relative overflow-hidden">
-        <div class="flex items-start justify-between w-full relative z-10">
-          <div class="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-            <UIcon name="i-heroicons-adjustments-horizontal" class="w-5 h-5" />
-          </div>
-          <UBadge color="neutral" variant="subtle" size="xs">Configurable</UBadge>
-        </div>
-        <div class="space-y-1 relative z-10">
-          <h2 class="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">Handicap Adjustment Matrix</h2>
-          <p class="text-[11px] text-slate-400">Configure Stableford threshold cuts, buffer zones, post-round handicap indexing rules.</p>
-        </div>
-        <div class="flex items-center gap-1 text-[10px] font-bold text-emerald-400 pt-1 relative z-10">
-          <span>Configure Matrix</span>
-          <UIcon name="i-heroicons-arrow-right" class="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-        </div>
-      </button>
-    </div>
-
-    <!-- 1. COMPETITIONS PANEL -->
-    <div v-if="activePanel === 'competitions'" class="bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden backdrop-blur-xl shadow-2xl space-y-4 p-3">
-      <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-            <UIcon name="i-heroicons-trophy" class="w-4 h-4" />
-          </div>
+        <!-- Welcome -->
+        <div class="flex items-center justify-between">
           <div>
-            <h2 class="font-bold text-white text-sm">Competitions & Fixtures Manager</h2>
-            <p class="text-[11px] text-slate-400">Create tournaments, assign venues, set podium prize payouts.</p>
+            <h1 class="text-lg font-black text-white">Admin Dashboard</h1>
+            <p class="text-xs text-slate-400">Society management, member oversight, and system health.</p>
           </div>
         </div>
-        <UButton @click="showAddComp = !showAddComp" size="sm" color="success" icon="i-heroicons-plus" class="font-bold whitespace-nowrap cursor-pointer shadow-lg shadow-emerald-500/20">Create Competition</UButton>
-      </div>
 
-      <div v-if="showAddComp" class="p-2 rounded-2xl border border-emerald-500/30 bg-slate-950/90 space-y-2 shadow-2xl">
-        <h4 class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Schedule New Society Fixture</h4>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div class="space-y-1">
-            <label class="text-[9px] font-bold uppercase text-slate-400 block">Competition Title</label>
-            <input v-model="newCompName" type="text" placeholder="e.g. Spring Championship 2026" class="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white text-[11px] focus:outline-none focus:border-emerald-500" />
-          </div>
-          <div class="space-y-1">
-            <label class="text-[9px] font-bold uppercase text-slate-400 block">Date & Tee Time</label>
-            <input v-model="newCompDate" type="datetime-local" class="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white text-[11px] focus:outline-none focus:border-emerald-500" />
-          </div>
-        </div>
-        <div class="space-y-1">
-          <label class="text-[9px] font-bold uppercase text-slate-400 block">Select Golf Course Venue</label>
-          <select v-model="newCompCourseId" class="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white text-[11px] focus:outline-none focus:border-emerald-500">
-            <option value="">-- Standard / Default Course --</option>
-            <option v-for="c in courses" :key="c.id" :value="c.id">{{ c.name }} ({{ c.location }})</option>
-          </select>
-        </div>
-        <div class="space-y-1 pt-1 border-t border-slate-800/80">
-          <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Podium Prize Payouts</span>
-          <div class="grid grid-cols-3 gap-2">
-            <div class="p-2 bg-slate-900 border border-slate-800 rounded-xl text-center">
-              <span class="text-[9px] text-slate-400 block font-semibold uppercase">1st Place (£)</span>
-              <input v-model.number="newCompPrize1st" type="number" placeholder="50" class="w-full text-center py-1 bg-slate-950 border border-slate-800 rounded-lg text-amber-400 font-bold text-[11px] mt-1" />
-            </div>
-            <div class="p-2 bg-slate-900 border border-slate-800 rounded-xl text-center">
-              <span class="text-[9px] text-slate-400 block font-semibold uppercase">2nd Place (£)</span>
-              <input v-model.number="newCompPrize2nd" type="number" placeholder="30" class="w-full text-center py-1 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 font-bold text-[11px] mt-1" />
-            </div>
-            <div class="p-2 bg-slate-900 border border-slate-800 rounded-xl text-center">
-              <span class="text-[9px] text-slate-400 block font-semibold uppercase">3rd Place (£)</span>
-              <input v-model.number="newCompPrize3rd" type="number" placeholder="15" class="w-full text-center py-1 bg-slate-950 border border-slate-800 rounded-lg text-orange-400 font-bold text-[11px] mt-1" />
-            </div>
-          </div>
-        </div>
-        <div class="flex justify-end gap-1 pt-1 border-t border-slate-800">
-          <UButton @click="showAddComp = false" color="neutral" variant="ghost" size="xs">Cancel</UButton>
-          <UButton @click="createCompetition" color="success" size="sm" class="font-bold cursor-pointer shadow-md shadow-emerald-500/20">Save & Schedule Fixture</UButton>
-        </div>
-      </div>
-
-      <div class="space-y-2">
-        <div class="relative">
-          <input v-model="compSearch" type="text" placeholder="Search competitions..." class="w-full pl-7 pr-2.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500" />
-          <UIcon name="i-heroicons-magnifying-glass" class="w-3.5 h-3.5 text-slate-500 absolute left-2 top-2.5" />
-        </div>
-        <div class="grid grid-cols-1 gap-2">
-          <div v-for="comp in filteredCompetitions" :key="comp.id" class="p-2 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-2 flex flex-col justify-between">
-            <div class="space-y-1">
-              <div class="flex items-center justify-between">
-                <span class="font-bold text-white text-sm">{{ comp.name }}</span>
-                <UBadge :color="comp.status === 'OPEN' ? 'success' : 'neutral'" variant="subtle" size="xs">{{ comp.status }}</UBadge>
-              </div>
-              <p class="text-[11px] text-slate-400">📅 {{ formatUKDate(comp.date) }}</p>
-              <p class="text-[11px] text-slate-400">🏆 Prizes: £{{ comp.prize1st || 0 }} / £{{ comp.prize2nd || 0 }} / £{{ comp.prize3rd || 0 }}</p>
-            </div>
-            <div class="flex items-center justify-between pt-1 border-t border-slate-800/80">
-              <UButton :to="`/competitions/${comp.id}`" size="xs" color="neutral" variant="soft" icon="i-heroicons-eye">View Lobby</UButton>
-              <UButton @click="toggleCompStatus(comp)" size="xs" :color="comp.status === 'OPEN' ? 'error' : 'success'" variant="soft">
-                {{ comp.status === 'OPEN' ? 'Close Scoring' : 'Open Scoring' }}
-              </UButton>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 2. COURSE DIRECTORY PANEL -->
-    <div v-if="activePanel === 'courses'" class="bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden backdrop-blur-xl shadow-2xl space-y-4 p-3">
-      <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-            <UIcon name="i-heroicons-flag" class="w-4 h-4" />
-          </div>
-          <div>
-            <h2 class="font-bold text-white text-sm">Course Directory & Rules Setup</h2>
-            <p class="text-[11px] text-slate-400">Saved courses with 18-hole par, stroke index, and custom handicap cut rules.</p>
-          </div>
-        </div>
-        <UButton @click="showAddCourse = !showAddCourse" size="sm" color="success" icon="i-heroicons-plus" class="font-bold whitespace-nowrap cursor-pointer shadow-lg shadow-emerald-500/20">Add New Course</UButton>
-      </div>
-
-      <div v-if="showAddCourse" class="p-2 rounded-2xl border border-emerald-500/30 bg-slate-950/90 space-y-2 shadow-2xl">
-        <h4 class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Configure New Golf Course</h4>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <input v-model="newCourseName" placeholder="Course Name (e.g. Blackwood Hamilton)" class="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white text-[11px] focus:outline-none focus:border-emerald-500" />
-          <input v-model="newCourseLocation" placeholder="Location / Town (e.g. Bangor)" class="w-full px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white text-[11px] focus:outline-none focus:border-emerald-500" />
-        </div>
-        <div class="flex items-center gap-2 pt-1">
-          <span class="text-[9px] font-semibold text-slate-400 uppercase">Hole Count:</span>
-          <button @click="handleHoleCountChange(18)" type="button" :class="newCourseNumHoles === 18 ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400 border border-slate-800'" class="flex-1 px-2 py-1.5 rounded-xl font-bold text-[10px] cursor-pointer">18 Holes</button>
-          <button @click="handleHoleCountChange(9)" type="button" :class="newCourseNumHoles === 9 ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400 border border-slate-800'" class="flex-1 px-2 py-1.5 rounded-xl font-bold text-[10px] cursor-pointer">9 Holes</button>
-        </div>
-        <div class="overflow-x-auto pt-1">
-          <table class="w-full text-center text-[10px]">
-            <thead>
-              <tr class="text-slate-400 font-bold uppercase border-b border-slate-800">
-                <th class="py-1 text-left">Hole</th>
-                <th v-for="h in newCourseNumHoles" :key="h" class="py-1">{{ h }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="border-b border-slate-800/60 font-bold text-emerald-400">
-                <td class="py-1 text-left">Par</td>
-                <td v-for="(_, idx) in newCoursePars" :key="idx" class="p-0.5">
-                  <input v-model.number="newCoursePars[idx]" type="number" min="3" max="5" class="w-full text-center py-1 bg-slate-900 border border-slate-800 rounded-md text-white font-bold text-[10px]" />
-                </td>
-              </tr>
-              <tr>
-                <td class="py-1 text-left text-slate-400">S.I.</td>
-                <td v-for="(_, idx) in newCourseSI" :key="idx" class="p-0.5">
-                  <input v-model.number="newCourseSI[idx]" type="number" min="1" :max="newCourseNumHoles" class="w-full text-center py-1 bg-slate-900 border border-slate-800 rounded-md text-white font-bold text-[10px]" />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="flex justify-end gap-1 pt-1 border-t border-slate-800/80">
-          <UButton @click="showAddCourse = false" color="neutral" variant="ghost" size="xs">Cancel</UButton>
-          <UButton @click="createCourse" color="success" size="sm" class="font-bold cursor-pointer shadow-md shadow-emerald-500/20">Save Course & Rules</UButton>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 gap-2">
-        <div v-for="course in courses" :key="course.id" class="p-2 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-2">
-          <div class="flex items-start justify-between">
-            <div>
-              <h3 class="font-bold text-white text-sm">{{ course.name }}</h3>
-              <p class="text-[11px] text-slate-400">📍 {{ course.location }}</p>
-            </div>
-            <UBadge color="success" variant="subtle" size="xs">{{ course.numHoles }} Holes</UBadge>
-          </div>
-          <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
-            <span class="text-slate-400">Total Par: <strong class="text-white">{{ Array.isArray(course.pars) ? course.pars.reduce((a: number, b: number) => a + b, 0) : 71 }}</strong></span>
-            <UButton size="xs" color="neutral" variant="soft" icon="i-heroicons-pencil-square" class="cursor-pointer font-medium" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 3. PLAYERS & MEMBERS PANEL -->
-    <div v-if="activePanel === 'players'" class="bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden backdrop-blur-xl shadow-2xl space-y-4 p-3">
-      <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-            <UIcon name="i-heroicons-user-group" class="w-4 h-4" />
-          </div>
-          <div>
-            <h2 class="font-bold text-white text-sm">Member Directory</h2>
-            <p class="text-[11px] text-slate-400">Manage player handicap indexes and next-round penalty modifiers.</p>
-          </div>
-        </div>
-        <UButton @click="showAddPlayer = !showAddPlayer" size="sm" color="success" icon="i-heroicons-user-plus" class="font-bold whitespace-nowrap cursor-pointer shadow-lg shadow-emerald-500/20">Register Member</UButton>
-      </div>
-
-      <div v-if="showAddPlayer" class="p-2 rounded-2xl border border-emerald-500/30 bg-slate-950/90 space-y-2 shadow-2xl">
-        <h4 class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Register New Society Member</h4>
-        <div class="grid grid-cols-3 gap-2">
-          <input v-model="newPlayerName" placeholder="Full Name" class="px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white text-[11px] focus:outline-none focus:border-emerald-500" />
-          <input v-model="newPlayerUsername" placeholder="Username (login)" class="px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white text-[11px] focus:outline-none focus:border-emerald-500" />
-          <input v-model.number="newPlayerHcp" type="number" step="0.1" placeholder="Initial HCP" class="px-2.5 py-2 bg-slate-900 border border-slate-800 rounded-xl text-white text-[11px] focus:outline-none focus:border-emerald-500 font-bold" />
-        </div>
-        <div class="flex justify-end gap-1 pt-1">
-          <UButton @click="showAddPlayer = false" color="neutral" variant="ghost" size="xs">Cancel</UButton>
-          <UButton @click="createPlayer" color="success" size="sm" class="font-bold cursor-pointer">Save Member</UButton>
-        </div>
-      </div>
-
-      <div class="relative">
-        <input v-model="playerSearch" type="text" placeholder="Search members..." class="w-full pl-7 pr-2.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500" />
-        <UIcon name="i-heroicons-magnifying-glass" class="w-3.5 h-3.5 text-slate-500 absolute left-2 top-2.5" />
-      </div>
-
-      <div class="grid grid-cols-1 gap-2">
-        <div v-for="player in filteredPlayers" :key="player.id" class="p-2 bg-slate-950/70 border border-slate-800 rounded-2xl space-y-2">
-          <div class="flex items-center justify-between">
-            <div>
-              <span class="font-bold text-white text-sm block">{{ player.name }}</span>
-              <span class="text-[10px] text-slate-400">@{{ player.username }} • Role: {{ player.role }}</span>
-            </div>
-            <div class="flex items-center gap-1">
-              <span class="text-[10px] text-slate-400 font-bold">HCP:</span>
-              <input v-model.number="player.handicapIndex" @change="updatePlayerRecord(player)" type="number" step="0.1" class="w-16 text-center py-1 bg-slate-900 border border-slate-800 rounded text-emerald-400 font-bold text-[11px]" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 4. HANDICAP RULES MATRIX PANEL -->
-    <div v-if="activePanel === 'rules'" class="bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden backdrop-blur-xl shadow-2xl space-y-4 p-3">
-      <div class="flex items-center gap-2 pb-2 border-b border-slate-800">
-        <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-          <UIcon name="i-heroicons-adjustments-horizontal" class="w-4 h-4" />
-        </div>
-        <div>
-          <h2 class="font-bold text-white text-sm">Handicap Adjustment Matrix</h2>
-          <p class="text-[11px] text-slate-400">Society-wide Stableford points cut and buffer zone configuration.</p>
-        </div>
-      </div>
-      <div class="grid grid-cols-1 gap-2">
-        <div v-for="rule in handicapRules" :key="rule.id" class="p-2 bg-slate-950/70 border border-slate-800 rounded-2xl flex items-center justify-between gap-2">
-          <div>
-            <span class="font-bold text-white text-sm block">{{ rule.label }}</span>
-            <span class="text-[10px] text-slate-400">{{ rule.desc }}</span>
-          </div>
-          <div class="flex items-center gap-1">
-            <span class="text-[10px] text-slate-500 font-semibold uppercase">Rate:</span>
-            <input v-model.number="rule.adjustment" type="number" step="0.5" class="w-16 text-center py-1 bg-slate-900 border border-slate-800 rounded text-emerald-400 font-bold text-[11px]" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- EDIT COURSE RULES MODAL (bottom sheet) -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showEditCourseModal" class="fixed inset-0 z-[999] flex items-end justify-center p-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-950/80 backdrop-blur-md">
-          <div class="bg-slate-900 border border-slate-800 w-full rounded-t-3xl p-3 sm:p-4 shadow-2xl flex flex-col max-h-[85vh] relative">
-            <div class="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-2 sm:hidden"></div>
-            <div class="flex items-start justify-between border-b border-slate-800 pb-2 shrink-0">
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl shadow-xl">
+            <div class="flex items-center justify-between">
               <div>
-                <h3 class="font-bold text-base text-emerald-400">Edit Course Handicap Rules</h3>
-                <p class="text-[10px] text-slate-400">{{ editingCourse?.name }} ({{ editingCourse?.location }})</p>
+                <span class="text-[10px] text-slate-500 uppercase font-bold block">Total Members</span>
+                <span class="text-2xl font-black text-white">{{ serverStats?.totalPlayers || 0 }}</span>
               </div>
-              <UButton icon="i-heroicons-x-mark" color="neutral" variant="ghost" size="xs" class="cursor-pointer" @click="closeModal" />
-            </div>
-            <div class="space-y-2 overflow-y-auto flex-1 pr-1">
-              <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Handicap Cut Band Rates</h4>
-              <div v-for="rule in editHandicapRules" :key="rule.id" class="p-2 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between gap-2">
-                <div>
-                  <span class="text-xs font-bold text-slate-200 block">{{ rule.label }}</span>
-                  <span class="text-[10px] text-slate-400">Cut Rate multiplier</span>
-                </div>
-                <div class="flex items-center gap-1">
-                  <span class="text-[10px] text-slate-500 font-semibold uppercase">Rate:</span>
-                  <input v-model.number="rule.bandRate" type="number" step="0.1" class="w-16 text-center py-1 bg-slate-900 border border-slate-800 rounded text-emerald-400 font-bold text-[11px]" />
-                </div>
+              <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <UIcon name="i-heroicons-user-group" class="w-4 h-4" />
               </div>
             </div>
-            <div class="flex justify-end gap-1 pt-1 border-t border-slate-800">
-              <UButton color="neutral" variant="ghost" size="xs" class="cursor-pointer" @click="closeModal">Cancel</UButton>
-              <UButton color="success" size="sm" :loading="updatingCourseRules" @click="updateCourseRules" class="font-bold cursor-pointer">Save Rules</UButton>
+          </div>
+          <div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl shadow-xl">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-slate-500 uppercase font-bold block">Active Fixtures</span>
+                <span class="text-2xl font-black text-white">{{ competitions.length }}</span>
+              </div>
+              <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <UIcon name="i-heroicons-trophy" class="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+          <div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl shadow-xl">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-slate-500 uppercase font-bold block">Courses</span>
+                <span class="text-2xl font-black text-white">{{ courses.length }}</span>
+              </div>
+              <div class="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <UIcon name="i-heroicons-flag" class="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+          <div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl shadow-xl">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[10px] text-slate-500 uppercase font-bold block">Prize Pool</span>
+                <span class="text-2xl font-black text-white">£{{ (serverStats?.totalPrizePool || 0).toLocaleString() }}</span>
+              </div>
+              <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                <UIcon name="i-heroicons-credit-card" class="w-4 h-4" />
+              </div>
             </div>
           </div>
         </div>
-      </Transition>
-    </Teleport>
 
+        <!-- Quick Actions -->
+        <div class="bg-slate-900/60 border border-slate-800/80 p-3 rounded-2xl shadow-xl space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800/80">
+            <span class="text-xs font-bold text-white uppercase tracking-wider">Quick Actions</span>
+            <span class="text-[10px] text-slate-500">Admin tools</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button @click="activeSection = 'users'" class="flex flex-col items-center gap-1.5 p-2 bg-slate-800/50 border border-slate-700/50 rounded-xl hover:bg-indigo-500/20 hover:border-indigo-500/40 transition-colors cursor-pointer">
+              <UIcon name="i-heroicons-user-plus" class="w-5 h-5 text-emerald-400" />
+              <span class="text-[10px] font-bold text-slate-300">Manage Members</span>
+            </button>
+            <button @click="activeSection = 'competitions'" class="flex flex-col items-center gap-1.5 p-2 bg-slate-800/50 border border-slate-700/50 rounded-xl hover:bg-amber-500/20 hover:border-amber-500/40 transition-colors cursor-pointer">
+              <UIcon name="i-heroicons-calendar" class="w-5 h-5 text-amber-400" />
+              <span class="text-[10px] font-bold text-slate-300">Manage Fixtures</span>
+            </button>
+            <button @click="activeSection = 'courses'" class="flex flex-col items-center gap-1.5 p-2 bg-slate-800/50 border border-slate-700/50 rounded-xl hover:bg-blue-500/20 hover:border-blue-500/40 transition-colors cursor-pointer">
+              <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-blue-400" />
+              <span class="text-[10px] font-bold text-slate-300">Manage Courses</span>
+            </button>
+            <button @click="activeSection = 'audit'" class="flex flex-col items-center gap-1.5 p-2 bg-slate-800/50 border border-slate-700/50 rounded-xl hover:bg-purple-500/20 hover:border-purple-500/40 transition-colors cursor-pointer">
+              <UIcon name="i-heroicons-document-text" class="w-5 h-5 text-purple-400" />
+              <span class="text-[10px] font-bold text-slate-300">Audit Log</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ USERS / MEMBERS ============ -->
+      <section v-if="activeSection === 'users'" class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-lg font-black text-white">Member Directory</h1>
+            <p class="text-xs text-slate-400">Manage player handicap indexes and membership status.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">{{ filteredUsers.length }} Members</span>
+            <button @click="showCreateUserModal = true" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/25 transition-all cursor-pointer">
+              Create User
+            </button>
+          </div>
+        </div>
+
+        <div class="relative">
+          <input
+            v-model="userSearch"
+            type="text"
+            placeholder="Search members..."
+            class="w-full pl-8 pr-3 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500"
+          />
+          <UIcon name="i-heroicons-magnifying-glass" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+        </div>
+
+        <div class="space-y-2">
+          <div
+            v-for="player in filteredUsers"
+            :key="player.id"
+            class="bg-slate-800/50 border border-slate-700/50 p-2.5 rounded-xl flex items-center justify-between space-y-2"
+          >
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+                {{ player.name.charAt(0).toUpperCase() }}
+              </div>
+              <div class="min-w-0">
+                <span class="text-xs font-bold text-white block truncate">{{ player.name }}</span>
+                <span class="text-[9px] text-slate-500 block truncate">@{{ player.username }} • Role: {{ player.role }}</span>
+              </div>
+            </div>
+
+            <div class="w-full border-t border-slate-700/50 mt-1"></div>
+
+            <div class="flex items-center justify-between mt-1">
+              <button
+                @click="openManageUserModal(player)"
+                class="px-2.5 py-1 bg-indigo-500/20 text-indigo-400 border border-indigo-500/40 rounded text-[10px] font-bold hover:bg-indigo-500/40 hover:text-indigo-300 transition-colors cursor-pointer shrink-0"
+              >
+                Manage
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="filteredUsers.length === 0" class="text-center py-6 text-xs text-slate-500">
+          No members found.
+        </div>
+      </section>
+
+      <!-- ============ COMPETITIONS / FIXTURES ============ -->
+      <section v-if="activeSection === 'competitions'" class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-lg font-black text-white">Fixtures & Competitions</h1>
+            <p class="text-xs text-slate-400">Schedule, open, close, and manage society tournaments.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">{{ competitions.length }} Fixtures</span>
+            <button @click="showCreateCompModal = true" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/25 transition-all cursor-pointer">
+              Create Fixture
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div
+            v-for="comp in competitions"
+            :key="comp.id"
+            class="bg-slate-800/50 border border-slate-700/50 p-2.5 rounded-xl flex items-center justify-between"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" :class="comp.status === 'OPEN' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-500 border border-slate-600'">
+                <UIcon :name="comp.status === 'OPEN' ? 'i-heroicons-play' : 'i-heroicons-pause'" class="w-3 h-3" />
+              </div>
+              <div class="min-w-0">
+                <span class="text-xs font-bold text-white block truncate">{{ comp.name }}</span>
+                <span class="text-[9px] text-slate-500 block truncate">{{ formatUKDate(comp.date) }} • {{ comp.venue || 'Home Course' }}</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1">
+              <UBadge
+                :color="comp.status === 'OPEN' ? 'success' : 'neutral'"
+                variant="subtle"
+                size="xs"
+                class="font-bold uppercase tracking-wider px-2 py-0.5"
+              >
+                {{ comp.status }}
+              </UBadge>
+              <button
+                @click="toggleCompStatus(comp)"
+                class="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors px-1.5 py-1 rounded-md hover:bg-indigo-500/10"
+              >
+                {{ comp.status === 'OPEN' ? 'Close' : 'Open' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="competitions.length === 0" class="text-center py-6 text-xs text-slate-500">
+          No fixtures found.
+        </div>
+      </section>
+
+      <!-- ============ COURSES ============ -->
+      <section v-if="activeSection === 'courses'" class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-lg font-black text-white">Course Directory</h1>
+            <p class="text-xs text-slate-400">Manage course pars, stroke indexes, and handicap rules.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">{{ courses.length }} Courses</span>
+            <button @click="showCreateCourseModal = true" class="px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-blue-500/25 transition-all cursor-pointer">
+              Create Course
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div
+            v-for="course in courses"
+            :key="course.id"
+            class="bg-slate-800/50 border border-slate-700/50 p-2.5 rounded-xl flex items-center justify-between"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <div class="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0">
+                <UIcon name="i-heroicons-flag" class="w-3 h-3" />
+              </div>
+              <div class="min-w-0">
+                <span class="text-xs font-bold text-white block truncate">{{ course.name }}</span>
+                <span class="text-[9px] text-slate-500 block truncate">{{ course.location }} • {{ course.numHoles }} Holes</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-[9px] text-slate-400 block">Par {{ Array.isArray(course.pars) ? course.pars.reduce((a: number, b: number) => a + b, 0) : '?' }}</span>
+              <button class="text-[10px] text-indigo-400 font-bold hover:text-indigo-300 transition-colors px-1.5 py-1 rounded-md hover:bg-indigo-500/10">Edit</button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="courses.length === 0" class="text-center py-6 text-xs text-slate-500">
+          No courses found.
+        </div>
+      </section>
+
+      <!-- ============ AUDIT LOG ============ -->
+      <section v-if="activeSection === 'audit'" class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-lg font-black text-white">Audit Log</h1>
+            <p class="text-xs text-slate-400">Recent administrative actions within this panel.</p>
+          </div>
+          <span class="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">{{ auditLog.length }} Events</span>
+        </div>
+
+        <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">
+          <div v-if="auditLog.length === 0" class="p-4 text-center text-xs text-slate-500">
+            No audit events recorded yet. Actions taken in this panel will appear here.
+          </div>
+          <div v-else class="divide-y divide-slate-700/50">
+            <div
+              v-for="log in auditLog"
+              :key="log.id"
+              class="p-3 flex items-center justify-between bg-slate-800/30 hover:bg-slate-800/60 transition-colors"
+            >
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">{{ log.action }}</span>
+                <span class="text-xs font-bold text-white truncate block">{{ log.target }}</span>
+                <span class="text-[9px] text-slate-500 block">{{ log.details }}</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[9px] font-bold text-slate-400 block">{{ formatUKDate(log.timestamp) }}</span>
+                <span class="text-[10px] text-slate-600 block">{{ log.admin }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <button
+            @click="addAuditLog('VIEW_AUDIT_LOG', 'Admin Panel', 'Opened audit log section')"
+            class="text-[10px] text-indigo-400 font-bold hover:text-indigo-300 transition-colors flex items-center gap-1"
+          >
+            <UIcon name="i-heroicons-arrow-path" class="w-3 h-3" />
+            <span>Record View</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ============ SETTINGS ============ -->
+      <section v-if="activeSection === 'settings'" class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-lg font-black text-white">System Settings</h1>
+            <p class="text-xs text-slate-400">Configure society-wide parameters.</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-3 shadow-xl space-y-4">
+          <div class="space-y-3">
+            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Handicap Cut Rate (Band 1: 0–6)</label>
+            <input type="number" step="0.1" class="w-full py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div class="space-y-3">
+            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Handicap Cut Rate (Band 2: 7–12)</label>
+            <input type="number" step="0.1" class="w-full py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div class="space-y-3">
+            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Handicap Cut Rate (Band 3: 13–18)</label>
+            <input type="number" step="0.1" class="w-full py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div class="space-y-3">
+            <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Handicap Cut Rate (Band 4: 19–32)</label>
+            <input type="number" step="0.1" class="w-full py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div class="pt-2 border-t border-slate-700/80">
+            <button class="w-full py-2.5 bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-500/25 transition-all cursor-pointer">
+              Save System Settings
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MANAGE USER MODAL ============ -->
+      <div v-if="showManageUserModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md" @click.self="showManageUserModal = false">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-4 shadow-2xl">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-white">Manage Member</h3>
+            <button @click="showManageUserModal = false" class="text-slate-400 hover:text-white">✕</button>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Display Name</label>
+              <input v-model="editUserName" type="text" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Handicap Index</label>
+              <input v-model.number="editUserHcp" type="number" step="0.1" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+          <div class="flex gap-2 mt-4">
+            <button @click="showManageUserModal = false" class="flex-1 py-2 bg-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-600 transition-colors cursor-pointer">
+              Cancel
+            </button>
+            <button @click="saveManagedUser" class="flex-1 py-2 bg-indigo-500 hover:bg-indigo-400 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/25 transition-all cursor-pointer">
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ CREATE USER MODAL ============ -->
+      <div v-if="showCreateUserModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md" @click.self="showCreateUserModal = false">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-4 shadow-2xl">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-white">Create New User</h3>
+            <button @click="showCreateUserModal = false" class="text-slate-400 hover:text-white">✕</button>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Display Name</label>
+              <input v-model="newUserName" type="text" placeholder="Full name" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Username</label>
+              <input v-model="newUserUsername" type="text" placeholder="Username (login)" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Temporary Password</label>
+              <input v-model="newUserPassword" type="password" placeholder="Temporary password" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+            </div>
+          </div>
+          <div class="flex gap-2 mt-4">
+            <button @click="showCreateUserModal = false" class="flex-1 py-2 bg-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-600 transition-colors cursor-pointer">
+              Cancel
+            </button>
+            <button @click="createUser" class="flex-1 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold shadow-lg shadow-emerald-500/25 transition-all cursor-pointer">
+              Create User
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ CREATE COMPETITION MODAL ============ -->
+      <div v-if="showCreateCompModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md" @click.self="showCreateCompModal = false">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-4 shadow-2xl">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-white">Create New Fixture</h3>
+            <button @click="showCreateCompModal = false" class="text-slate-400 hover:text-white">✕</button>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Competition Name</label>
+              <input v-model="newCompName" type="text" placeholder="e.g. Spring Open 2026" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Select Course</label>
+              <select v-model="newCompCourseId" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
+                <option value="">-- Default / Standard Course --</option>
+                <option v-for="c in courses" :key="c.id" :value="c.id">{{ c.name }} ({{ c.location }})</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Date & Tee Time</label>
+              <input v-model="newCompDate" type="datetime-local" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">1st Prize (£)</label>
+                <input v-model.number="newCompPrize1st" type="number" placeholder="0" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">2nd Prize (£)</label>
+                <input v-model.number="newCompPrize2nd" type="number" placeholder="0" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">3rd Prize (£)</label>
+                <input v-model.number="newCompPrize3rd" type="number" placeholder="0" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-2 mt-4">
+            <button @click="showCreateCompModal = false" class="flex-1 py-2 bg-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-600 transition-colors cursor-pointer">
+              Cancel
+            </button>
+            <button @click="createCompetition" class="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-lg shadow-amber-500/25 transition-all cursor-pointer">
+              Create Fixture
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ CREATE COURSE MODAL ============ -->
+      <div v-if="showCreateCourseModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md" @click.self="showCreateCourseModal = false">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-2xl p-4 shadow-2xl">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-white">Create New Course</h3>
+            <button @click="showCreateCourseModal = false" class="text-slate-400 hover:text-white">✕</button>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Course Name</label>
+              <input v-model="newCourseName" type="text" placeholder="e.g. Blackwood Hamilton" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Location</label>
+              <input v-model="newCourseLocation" type="text" placeholder="e.g. Bangor" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div class="flex gap-2 mb-2">
+              <button @click="handleHoleCountChange(18)" :class="newCourseNumHoles === 18 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-700 text-slate-400'" class="flex-1 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-colors">
+                18 Holes
+              </button>
+              <button @click="handleHoleCountChange(9)" :class="newCourseNumHoles === 9 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-700 text-slate-400'" class="flex-1 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-colors">
+                9 Holes
+              </button>
+            </div>
+            <div class="overflow-x-auto mb-2">
+              <table class="w-full text-center text-[10px]">
+                <thead>
+                  <tr class="text-slate-400 font-bold uppercase border-b border-slate-700">
+                    <th class="py-1 text-left">Hole</th>
+                    <th v-for="h in newCourseNumHoles" :key="h" class="py-1">{{ h }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="border-b border-slate-700/60 font-bold text-emerald-400">
+                    <td class="py-1 text-left">Par</td>
+                    <td v-for="(_, idx) in newCoursePars" :key="idx" class="p-0.5">
+                      <input v-model.number="newCoursePars[idx]" type="number" min="3" max="6" class="w-full text-center py-1 bg-slate-900 border border-slate-700 rounded text-white font-bold text-[10px] focus:outline-none focus:border-indigo-500" />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="py-1 text-left text-slate-400">S.I.</td>
+                    <td v-for="(_, idx) in newCourseSI" :key="idx" class="p-0.5">
+                      <input v-model.number="newCourseSI[idx]" type="number" min="1" :max="newCourseNumHoles" class="w-full text-center py-1 bg-slate-900 border border-slate-700 rounded text-white font-bold text-[10px] focus:outline-none focus:border-indigo-500" />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="flex gap-2 mt-4">
+            <button @click="showCreateCourseModal = false" class="flex-1 py-2 bg-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-600 transition-colors cursor-pointer">
+              Cancel
+            </button>
+            <button @click="saveNewCourse" class="flex-1 py-2 bg-blue-500 hover:bg-blue-400 text-slate-950 font-bold shadow-lg shadow-blue-500/25 transition-all cursor-pointer">
+              Save Course
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Bottom Navigation (Admin-specific) -->
+    <nav class="fixed left-0 right-0 bottom-0 z-40 border-t border-slate-800/90 bg-slate-950/95 backdrop-blur-3xl p-2 pt-1.5 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl">
+      <div class="flex items-center justify-between text-[10px] leading-none">
+        <template v-for="item in navItems" :key="item.key">
+          <button
+            @click="activeSection = item.key as typeof activeSection"
+            :class="[
+              activeSection === item.key
+                ? 'text-indigo-400 bg-indigo-500/10'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+            ] + ' flex flex-col items-center justify-center gap-0.5 min-w-0 p-1.5 rounded-xl transition-colors'"
+          >
+            <UIcon :name="item.icon" class="w-4 h-4" />
+            <span class="font-bold leading-tight">{{ item.label }}</span>
+          </button>
+        </template>
+      </div>
+    </nav>
   </div>
 </template>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-  transform: scale(0.95);
-}
 </style>
