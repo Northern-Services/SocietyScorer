@@ -8,6 +8,28 @@ definePageMeta({
 // ---------- STATE ----------
 const activeSection = ref<'overview' | 'users' | 'competitions' | 'courses' | 'audit' | 'settings'>('overview')
 
+// ---------- THEME (persists to localStorage) ----------
+const loadTheme = (): 'dark' | 'light' => {
+  try {
+    return isClient ? (localStorage.getItem('admin_theme') as 'dark' | 'light') || 'dark' : 'dark'
+  } catch {
+    return 'dark'
+  }
+}
+const saveTheme = (theme: 'dark' | 'light') => {
+  try {
+    if (isClient) localStorage.setItem('admin_theme', theme)
+  } catch {
+    console.error('Failed to persist theme')
+  }
+}
+const darkMode = ref<'dark' | 'light'>(loadTheme())
+
+const toggleTheme = () => {
+  darkMode.value = darkMode.value === 'dark' ? 'light' : 'dark'
+  saveTheme(darkMode.value)
+}
+
 const formatUKDate = (isoString: string) => {
   if (!isoString) return ''
   const d = new Date(isoString)
@@ -51,6 +73,24 @@ const saveAuditLog = (logs: any[]) => {
 
 const auditLog = ref<any[]>(loadAuditLog())
 let auditCounter = auditLog.value.length
+const auditSearch = ref('')
+const auditActionFilter = ref('all')
+const auditActionTypes = computed(() => {
+  const types = new Set(auditLog.value.map((log: any) => log.action))
+  return Array.from(types).sort()
+})
+
+const filteredAuditLog = computed(() => {
+  return auditLog.value.filter((log: any) => {
+    const matchesSearch = !auditSearch.value ||
+      log.action.toLowerCase().includes(auditSearch.value.toLowerCase()) ||
+      log.target.toLowerCase().includes(auditSearch.value.toLowerCase()) ||
+      log.details.toLowerCase().includes(auditSearch.value.toLowerCase())
+    const matchesAction = auditActionFilter.value === 'all' || log.action === auditActionFilter.value
+    return matchesSearch && matchesAction
+  })
+})
+
 const addAuditLog = (action: string, target: string, details: string = '') => {
   try {
     auditLog.value.unshift({
@@ -297,10 +337,22 @@ const navItems = [
 </script>
 
 <template>
-  <div class="bg-[#0f172a] text-slate-200 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white relative overflow-x-hidden pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]">
+  <div
+    :class="
+      darkMode === 'dark'
+        ? 'bg-[#0f172a] text-slate-200 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white relative overflow-x-hidden pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]'
+        : 'bg-slate-50 text-slate-900 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white relative overflow-x-hidden pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]'
+    "
+  >
 
     <!-- Admin Header -->
-    <header class="relative z-20 w-full px-3 pt-3 pb-1.5 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80">
+    <header
+      :class="
+        darkMode === 'dark'
+          ? 'relative z-20 w-full px-3 pt-3 pb-1.5 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80'
+          : 'relative z-20 w-full px-3 pt-3 pb-1.5 bg-white/80 backdrop-blur-md border-b border-slate-200/80'
+      "
+    >
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           <button
@@ -309,11 +361,22 @@ const navItems = [
           >
             <UIcon name="i-lucide-house" class="w-4 h-4" />
           </button>
+          <button
+            @click="toggleTheme"
+            class="w-8 h-8 rounded-xl border flex items-center justify-center text-xs transition-colors cursor-pointer"
+            :class="
+              darkMode === 'dark'
+                ? 'border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10'
+                : 'border-slate-600/30 text-slate-400 hover:bg-slate-600/10'
+            "
+          >
+            <UIcon :name="darkMode === 'dark' ? 'i-heroicons-sun' : 'i-heroicons-moon'" class="w-4 h-4" />
+          </button>
           <div class="flex items-center gap-2 group cursor-pointer">
             <div class="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center">
               <UIcon name="i-heroicons-shield-check" class="w-4 h-4" />
             </div>
-            <span class="font-black text-white tracking-tight text-sm sm:text-base">Admin</span>
+            <span class="font-black tracking-tight text-sm sm:text-base" :class="darkMode === 'dark' ? 'text-white' : 'text-slate-900'">Admin</span>
           </div>
         </div>
       </div>
@@ -571,16 +634,38 @@ const navItems = [
             <h1 class="text-lg font-black text-white">Audit Log</h1>
             <p class="text-xs text-slate-400">Recent administrative actions within this panel.</p>
           </div>
-          <span class="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">{{ auditLog.length }} Events</span>
+          <span class="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">{{ filteredAuditLog.length }} Events</span>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-3 shadow-xl space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="relative">
+              <input
+                v-model="auditSearch"
+                type="text"
+                placeholder="Search actions, targets, details..."
+                class="w-full pl-8 pr-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500"
+              />
+              <UIcon name="i-heroicons-magnifying-glass" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+            </div>
+            <select
+              v-model="auditActionFilter"
+              class="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-indigo-500"
+            >
+              <option value="all">All Actions</option>
+              <option v-for="action in auditActionTypes" :key="action" :value="action">{{ action }}</option>
+            </select>
+          </div>
         </div>
 
         <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl overflow-hidden shadow-xl">
-          <div v-if="auditLog.length === 0" class="p-4 text-center text-xs text-slate-500">
-            No audit events recorded yet. Actions taken in this panel will appear here.
+          <div v-if="filteredAuditLog.length === 0" class="p-4 text-center text-xs text-slate-500">
+            No audit events match your filters.
           </div>
           <div v-else class="divide-y divide-slate-700/50">
             <div
-              v-for="log in auditLog"
+              v-for="log in filteredAuditLog"
               :key="log.id"
               class="p-3 flex items-center justify-between bg-slate-800/30 hover:bg-slate-800/60 transition-colors"
             >
