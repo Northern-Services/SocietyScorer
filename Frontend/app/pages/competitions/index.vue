@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 const { data: userRes, error: userError } = await useFetch('/api/auth/me', {
   ignoreResponseError: true
@@ -13,6 +13,38 @@ if (userError.value || !isLoggedIn.value) {
 
 const { data: compRes, refresh } = await useFetch('/api/competitions')
 const competitions = computed(() => compRes.value?.data || [])
+
+// Weather per competition course
+const compWeather = ref<Record<string, any>>({})
+const compWeatherLoading = ref<Record<string, boolean>>({})
+
+const fetchCompWeather = async (comp: any) => {
+  if (!comp.courseId) return
+  try {
+    const courseRes: any = await $fetch(`/api/courses/${comp.courseId}`)
+    const course = courseRes?.data
+    if (course?.latitude && course?.longitude) {
+      compWeatherLoading.value[comp.courseId] = true
+      const weatherRes: any = await $fetch('/api/weather', {
+        query: { latitude: course.latitude, longitude: course.longitude }
+      })
+      compWeather.value[comp.courseId] = weatherRes?.data || null
+    }
+  } catch (e) {
+    console.error('Weather fetch failed for competition course', comp.courseId, e)
+  } finally {
+    compWeatherLoading.value[comp.courseId] = false
+  }
+}
+
+// Fetch weather for all competitions on load
+onMounted(() => {
+  competitions.value.forEach((comp: any) => {
+    if (comp.courseId) {
+      fetchCompWeather(comp)
+    }
+  })
+})
 
 const activeTab = ref<'open' | 'closed'>('open')
 const search = ref('')
@@ -161,6 +193,17 @@ const isLiveToday = (dateString: string) => {
               <span class="px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-md text-[9px] uppercase tracking-wider">
                 <UIcon name="i-heroicons-trophy" class="w-3 h-3 text-amber-400 shrink-0" />
                 Pool: £{{ Number(comp.prize1st || 0) + Number(comp.prize2nd || 0) + Number(comp.prize3rd || 0) }}
+              </span>
+            </div>
+
+            <!-- Weather -->
+            <div v-if="comp.courseId && compWeather[comp.courseId]" class="mt-1.5 flex items-center gap-2 pt-1 border-t border-slate-800">
+              <UIcon name="i-heroicons-cloud" class="w-3 h-3 text-blue-400" />
+              <span class="text-[10px] text-slate-400 flex items-center gap-1">
+                <span class="text-blue-400 font-bold">{{ compWeather[comp.courseId].temperature }}°C</span>
+                <span>{{ compWeather[comp.courseId].description }}</span>
+                <span v-if="compWeather[comp.courseId].precipProbability > 0" class="text-blue-400">🌧️ {{ compWeather[comp.courseId].precipProbability }}%</span>
+                <span class="text-slate-400">💨 {{ compWeather[comp.courseId].windspeed }} km/h</span>
               </span>
             </div>
           </div>

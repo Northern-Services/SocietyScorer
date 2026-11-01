@@ -5,7 +5,11 @@ export default defineEventHandler(async (event) => {
   const lat = parseFloat(latitude as string)
   const lon = parseFloat(longitude as string)
 
-  if (!lat || !lon) throw createError({ statusCode: 400, statusMessage: 'Latitude and longitude are required.' })
+  if (lat === null || lat === undefined || isNaN(lat) || lon === null || lon === undefined || isNaN(lon))
+    throw createError({ statusCode: 400, statusMessage: 'Latitude and longitude are required.' })
+
+  if (lat < -90 || lat > 90) throw createError({ statusCode: 400, statusMessage: 'Latitude must be between -90 and 90.' })
+  if (lon < -180 || lon > 180) throw createError({ statusCode: 400, statusMessage: 'Longitude must be between -180 and 180.' })
 
   try {
     // Fetch 3-day forecast from Open-Meteo (free, no API key)

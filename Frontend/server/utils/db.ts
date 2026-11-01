@@ -116,6 +116,17 @@ db.exec(`
     FOREIGN KEY (competitionId) REFERENCES competitions(id),
     FOREIGN KEY (playerId) REFERENCES players(id)
   );
+
+  CREATE TABLE IF NOT EXISTS twos (
+    id TEXT PRIMARY KEY,
+    competitionId TEXT NOT NULL,
+    playerId TEXT NOT NULL,
+    holeNumber INTEGER NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (competitionId) REFERENCES competitions(id),
+    FOREIGN KEY (playerId) REFERENCES players(id),
+    UNIQUE(competitionId, playerId, holeNumber)
+  );
 `);
 
 export { db }

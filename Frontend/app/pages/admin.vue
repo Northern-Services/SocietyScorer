@@ -289,6 +289,8 @@ const newCourseLocation = ref('')
 const newCourseNumHoles = ref(18)
 const newCoursePars = ref([4, 5, 3, 4, 4, 4, 3, 4, 5, 4, 4, 3, 4, 5, 4, 3, 4, 4])
 const newCourseSI = ref([6, 12, 8, 18, 2, 14, 10, 4, 16, 5, 9, 13, 1, 17, 3, 7, 11, 15])
+const newCourseLatitude = ref('')
+const newCourseLongitude = ref('')
 
 const handleHoleCountChange = (count: number) => {
   newCourseNumHoles.value = count
@@ -306,7 +308,9 @@ const saveNewCourse = async () => {
     location: newCourseLocation.value,
     numHoles: newCourseNumHoles.value,
     pars: newCoursePars.value,
-    strokeIndexes: newCourseSI.value
+    strokeIndexes: newCourseSI.value,
+    latitude: Number(newCourseLatitude.value) || null,
+    longitude: Number(newCourseLongitude.value) || null
   }
   try {
     const res: any = await $fetch('/api/courses', {
@@ -858,6 +862,16 @@ const navItems = [
             <div>
               <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Location</label>
               <input v-model="newCourseLocation" type="text" placeholder="e.g. Bangor" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Latitude</label>
+                <input v-model="newCourseLatitude" type="number" step="0.000001" min="-90" max="90" placeholder="e.g. 54.6674" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Longitude</label>
+                <input v-model="newCourseLongitude" type="number" step="0.000001" min="-180" max="180" placeholder="e.g. -5.6738" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
+              </div>
             </div>
             <div class="flex gap-2 mb-2">
               <button @click="handleHoleCountChange(18)" :class="newCourseNumHoles === 18 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-700 text-slate-400'" class="flex-1 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-colors">

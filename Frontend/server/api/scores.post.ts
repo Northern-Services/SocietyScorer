@@ -59,6 +59,22 @@ export default defineEventHandler(async (event: any) => {
     const handicapAfterRound = cutResult.newHandicapIndex
     const scoreId = crypto.randomUUID()
 
+    // Ensure twos table exists (migration for existing DBs)
+    try {
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS twos (
+          id TEXT PRIMARY KEY,
+          competitionId TEXT NOT NULL,
+          playerId TEXT NOT NULL,
+          holeNumber INTEGER NOT NULL,
+          createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (competitionId) REFERENCES competitions(id),
+          FOREIGN KEY (playerId) REFERENCES players(id),
+          UNIQUE(competitionId, playerId, holeNumber)
+        )
+      `).run()
+    } catch { /* table may already exist */ }
+
     db.transaction(() => {
       db.prepare(`INSERT INTO scores (id, competitionId, playerId, holeScores, stablefordPoints, handicapBeforeRound, handicapAfterRound) VALUES (?, ?, ?, ?, ?, ?, ?)`)
         .run(scoreId, competitionId, player.id, JSON.stringify(holeScores), totalStablefordPoints, handicapBeforeRound, handicapAfterRound)

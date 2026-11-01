@@ -6,6 +6,14 @@ export default defineEventHandler(async (event) => {
   const authUserId = getAuthUserId(event)
   const { name, location, numHoles, pars, strokeIndexes, handicapRules, latitude, longitude } = await readBody(event)
   if (!name || !location) throw createError({ statusCode: 400, statusMessage: 'Name and location are required.' })
+  if (latitude !== null && latitude !== undefined && latitude !== '') {
+    const lat = Number(latitude)
+    if (isNaN(lat) || lat < -90 || lat > 90) throw createError({ statusCode: 400, statusMessage: 'Latitude must be between -90 and 90.' })
+  }
+  if (longitude !== null && longitude !== undefined && longitude !== '') {
+    const lon = Number(longitude)
+    if (isNaN(lon) || lon < -180 || lon > 180) throw createError({ statusCode: 400, statusMessage: 'Longitude must be between -180 and 180.' })
+  }
   const courseId = randomUUID()
   try {
     // Ensure lat/long columns exist (migration for existing DBs)

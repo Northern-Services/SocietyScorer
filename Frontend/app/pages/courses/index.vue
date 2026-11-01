@@ -9,6 +9,8 @@ const isLoggedIn = computed(() => !!userRes.value?.success && !!userRes.value?.d
 
 const searchQuery = ref('')
 const courses = ref<any[]>([])
+const courseWeather = ref<Record<string, any>>({})
+const weatherLoading = ref<Record<string, boolean>>({})
 const loading = ref(true)
 
 const fetchCourses = async () => {
@@ -17,6 +19,24 @@ const fetchCourses = async () => {
     const res: any = await $fetch(`/api/courses?q=${encodeURIComponent(searchQuery.value)}`)
     if (res?.success) {
       courses.value = res.courses
+      // Fetch weather for courses with coordinates
+      await Promise.all(
+        courses.value.map(async (course: any) => {
+          if (course.latitude && course.longitude) {
+            weatherLoading.value[course.id] = true
+            try {
+              const weatherRes: any = await $fetch('/api/weather', {
+                query: { latitude: course.latitude, longitude: course.longitude }
+              })
+              courseWeather.value[course.id] = weatherRes?.data || null
+            } catch (e) {
+              console.error('Weather fetch failed for course', course.id, e)
+            } finally {
+              weatherLoading.value[course.id] = false
+            }
+          }
+        })
+      )
     }
   } catch (err) {
     console.error(err)
@@ -65,6 +85,18 @@ onMounted(() => fetchCourses())
         <div class="text-[11px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800">
           <span>Par {{ course.pars.reduce((a: number, b: number) => a + b, 0) }}</span>
           <NuxtLink v-if="isLoggedIn" :to="`/scorecard?courseId=${course.id}`" class="text-xs text-emerald-400 font-bold hover:underline">Play Course →</NuxtLink>
+        </div>
+        <div v-if="courseWeather[course.id]" class="mt-1.5 flex items-center gap-2 pt-1 border-t border-slate-800">
+          <UIcon name="i-heroicons-cloud" class="w-3 h-3 text-blue-400" />
+          <span class="text-[10px] text-slate-400 flex items-center gap-1">
+            <span class="text-blue-400 font-bold">{{ courseWeather[course.id].temperature }}°C</span>
+            <span>{{ courseWeather[course.id].description }}</span>
+            <span v-if="courseWeather[course.id].precipProbability > 0" class="text-blue-400">🌧️ {{ courseWeather[course.id].precipProbability }}%</span>
+            <span class="text-slate-400">💨 {{ courseWeather[course.id].windspeed }} km/h</span>
+          </span>
+        </div>
+        <div v-if="course.latitude && course.longitude && !courseWeather[course.id] && !weatherLoading[course.id]" class="mt-1.5 flex items-center gap-2 pt-1 border-t border-slate-800">
+          <span class="text-[10px] text-slate-500">Weather unavailable</span>
         </div>
       </div>
     </div>
