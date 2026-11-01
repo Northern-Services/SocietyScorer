@@ -17,19 +17,32 @@ const competitions = computed(() => compRes.value?.data || [])
 // Weather per competition course
 const compWeather = ref<Record<string, any>>({})
 const compWeatherLoading = ref<Record<string, boolean>>({})
+const courseMap = ref<Record<string, any>>({})
+
+// Fetch all courses once to build a lookup map
+const fetchAllCourses = async () => {
+  try {
+    const coursesRes: any = await $fetch('/api/courses')
+    if (coursesRes?.courses) {
+      coursesRes.courses.forEach((c: any) => {
+        courseMap.value[c.id] = c
+      })
+    }
+  } catch (e) {
+    console.error('Failed to fetch courses for weather', e)
+  }
+}
 
 const fetchCompWeather = async (comp: any) => {
   if (!comp.courseId) return
+  const course = courseMap.value[comp.courseId]
+  if (!course?.latitude || !course?.longitude) return
   try {
-    const courseRes: any = await $fetch(`/api/courses/${comp.courseId}`)
-    const course = courseRes?.data
-    if (course?.latitude && course?.longitude) {
-      compWeatherLoading.value[comp.courseId] = true
-      const weatherRes: any = await $fetch('/api/weather', {
-        query: { latitude: course.latitude, longitude: course.longitude }
-      })
-      compWeather.value[comp.courseId] = weatherRes?.data || null
-    }
+    compWeatherLoading.value[comp.courseId] = true
+    const weatherRes: any = await $fetch('/api/weather', {
+      query: { latitude: course.latitude, longitude: course.longitude }
+    })
+    compWeather.value[comp.courseId] = weatherRes?.data || null
   } catch (e) {
     console.error('Weather fetch failed for competition course', comp.courseId, e)
   } finally {
@@ -38,7 +51,8 @@ const fetchCompWeather = async (comp: any) => {
 }
 
 // Fetch weather for all competitions on load
-onMounted(() => {
+onMounted(async () => {
+  await fetchAllCourses()
   competitions.value.forEach((comp: any) => {
     if (comp.courseId) {
       fetchCompWeather(comp)
@@ -197,7 +211,11 @@ const isLiveToday = (dateString: string) => {
             </div>
 
             <!-- Weather -->
-            <div v-if="comp.courseId && compWeather[comp.courseId]" class="mt-1.5 flex items-center gap-2 pt-1 border-t border-slate-800">
+            <div v-if="comp.courseId && compWeatherLoading[comp.courseId]" class="mt-1.5 flex items-center gap-2 pt-1 border-t border-slate-800">
+              <UIcon name="i-heroicons-cloud" class="w-3 h-3 text-slate-500 animate-pulse" />
+              <span class="text-[10px] text-slate-500">Loading weather...</span>
+            </div>
+            <div v-else-if="comp.courseId && compWeather[comp.courseId]" class="mt-1.5 flex items-center gap-2 pt-1 border-t border-slate-800">
               <UIcon name="i-heroicons-cloud" class="w-3 h-3 text-blue-400" />
               <span class="text-[10px] text-slate-400 flex items-center gap-1">
                 <span class="text-blue-400 font-bold">{{ compWeather[comp.courseId].temperature }}°C</span>
@@ -206,7 +224,13 @@ const isLiveToday = (dateString: string) => {
                 <span class="text-slate-400">💨 {{ compWeather[comp.courseId].windspeed }} km/h</span>
               </span>
             </div>
+            <div v-else-if="comp.courseId && !compWeather[comp.courseId] && !compWeatherLoading[comp.courseId]" class="mt-1.5 flex items-center gap-2 pt-1 border-t border-slate-800">
+              <UIcon name="i-heroicons-cloud" class="w-3 h-3 text-slate-500" />
+              <span class="text-[10px] text-slate-500">Weather unavailable</span>
+            </div>
           </div>
+
+          <br/>
 
           <UButton
             :to="`/competitions/${comp.id}`"
