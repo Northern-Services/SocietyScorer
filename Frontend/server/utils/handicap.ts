@@ -113,15 +113,42 @@ export function calculateFullScorecard(
  * Post-round Earlybirds Handicap Cut & Penalty Logic
  * Called strictly AFTER round submission.
  */
+export interface HandicapBand {
+  id?: string
+  label?: string
+  minPts: number
+  maxPts: number
+  bandRate: number
+}
+
+/**
+ * Post-round Earlybirds Handicap Cut & Penalty Logic
+ * Called strictly AFTER round submission.
+ * Accepts optional course-specific handicap bands. Falls back to default bands if not provided.
+ */
 export function calculateEarlybirdsHandicapCut(
   currentHandicapIndex: number,
   totalStablefordPoints: number,
-  podiumFinish: '1st' | '2nd' | '3rd' | 'other' = 'other'
+  podiumFinish: '1st' | '2nd' | '3rd' | 'other' = 'other',
+  bands?: HandicapBand[]
 ) {
-  let bandRate = 0.8 // Default band 4 (HCP 19-32)
-  if (currentHandicapIndex <= 6) bandRate = 0.2
-  else if (currentHandicapIndex <= 12) bandRate = 0.4
-  else if (currentHandicapIndex <= 18) bandRate = 0.6
+  // Default bands (fallback)
+  const defaultBands: HandicapBand[] = [
+    { minPts: 0, maxPts: 6, bandRate: 0.2 },
+    { minPts: 7, maxPts: 12, bandRate: 0.4 },
+    { minPts: 13, maxPts: 18, bandRate: 0.6 },
+    { minPts: 19, maxPts: 32, bandRate: 0.8 }
+  ]
+  const activeBands = bands || defaultBands
+
+  // Find the band rate for the player's current handicap index
+  let bandRate = defaultBands[3]?.bandRate ?? 0.8 // Default to band 4
+  for (const band of activeBands) {
+    if (currentHandicapIndex >= band.minPts && currentHandicapIndex <= band.maxPts) {
+      bandRate = band.bandRate
+      break
+    }
+  }
 
   // 1. Calculate Cut for points over 36
   let cutAmount = 0

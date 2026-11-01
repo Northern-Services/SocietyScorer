@@ -1,4 +1,6 @@
 import { requireAuth, db, readBody, createError, ok, handleError, getAuthUserId } from '../utils/api'
+import { calculateEarlybirdsHandicapCut } from '../utils/handicap'
+import type { HandicapBand } from '../utils/handicap'
 import crypto from 'node:crypto'
 
 export default defineEventHandler(async (event: any) => {
@@ -27,6 +29,18 @@ export default defineEventHandler(async (event: any) => {
     const penalty = player.nextRoundPenalty || 0.0
     const playingHandicap = Math.round(handicapBeforeRound + penalty)
 
+    // Fetch course-specific handicap bands
+    let courseBands: HandicapBand[] | undefined
+    if (comp.courseId) {
+      const course = db.prepare('SELECT handicapRules FROM courses WHERE id = ?').get(comp.courseId) as any
+      if (course?.handicapRules) {
+        try {
+          const parsed = typeof course.handicapRules === 'string' ? JSON.parse(course.handicapRules) : course.handicapRules
+          courseBands = parsed.bands || parsed
+        } catch { courseBands = undefined }
+      }
+    }
+
     let totalStablefordPoints = 0
     const twosDetected: number[] = []
     courseHoles.forEach((h: any, idx: number) => {
@@ -41,13 +55,8 @@ export default defineEventHandler(async (event: any) => {
       if (h.par === 3 && grossStrokes === 2) twosDetected.push(h.holeNumber)
     })
 
-    let delta = 0.0
-    if (totalStablefordPoints >= 40) delta = -2.0
-    else if (totalStablefordPoints >= 37) delta = -1.0
-    else if (totalStablefordPoints >= 35) delta = -0.5
-    else if (totalStablefordPoints < 30) delta = +0.5
-
-    const handicapAfterRound = Math.max(0.0, parseFloat((handicapBeforeRound + delta).toFixed(1)))
+    const cutResult = calculateEarlybirdsHandicapCut(handicapBeforeRound, totalStablefordPoints, 'other', courseBands)
+    const handicapAfterRound = cutResult.newHandicapIndex
     const scoreId = crypto.randomUUID()
 
     db.transaction(() => {
@@ -57,6 +66,6 @@ export default defineEventHandler(async (event: any) => {
       db.prepare(`UPDATE players SET handicapIndex = ?, nextRoundPenalty = 0.0 WHERE id = ?`).run(handicapAfterRound, player.id)
     })()
 
-    return ok({ data: { scoreId, stablefordPoints: totalStablefordPoints, handicapBeforeRound, handicapAfterRound, handicapDelta: delta, twosCount: twosDetected.length, twosHoles: twosDetected } })
+    return ok({ data: { scoreId, stablefordPoints: totalStablefordPoints, handicapBeforeRound, handicapAfterRound, handicapDelta: -cutResult.cutAmount, twosCount: twosDetected.length, twosHoles: twosDetected } })
   } catch (error: any) { handleError(error) }
 })

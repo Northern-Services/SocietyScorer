@@ -247,6 +247,7 @@ const newCompDate = ref('')
 const newCompPrize1st = ref<number | string>('')
 const newCompPrize2nd = ref<number | string>('')
 const newCompPrize3rd = ref<number | string>('')
+const newCompPotAmount = ref<number | string>('')
 
 const createCompetition = async () => {
   if (!newCompName.value || !newCompDate.value) {
@@ -262,7 +263,8 @@ const createCompetition = async () => {
         date: newCompDate.value,
         prize1st: Number(newCompPrize1st.value) || 0,
         prize2nd: Number(newCompPrize2nd.value) || 0,
-        prize3rd: Number(newCompPrize3rd.value) || 0
+        prize3rd: Number(newCompPrize3rd.value) || 0,
+        potAmount: Number(newCompPotAmount.value) || 0
       }
     })
     await refreshCompetitions()
@@ -273,6 +275,7 @@ const createCompetition = async () => {
     newCompPrize1st.value = ''
     newCompPrize2nd.value = ''
     newCompPrize3rd.value = ''
+    newCompPotAmount.value = ''
     addAuditLog('CREATE_COMPETITION', newCompName.value, 'New fixture scheduled')
   } catch (err: any) {
     alert(err?.data?.statusMessage || 'Failed to create competition.')
@@ -823,6 +826,10 @@ const navItems = [
                 <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">3rd Prize (£)</label>
                 <input v-model.number="newCompPrize3rd" type="number" placeholder="0" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
               </div>
+            </div>
+            <div>
+              <label class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">2's Club Pot (£)</label>
+              <input v-model.number="newCompPotAmount" type="number" placeholder="0" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500" />
             </div>
           </div>
           <div class="flex gap-2 mt-4">

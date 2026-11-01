@@ -21,6 +21,36 @@ const isJoined = computed(() => {
 const { data: leaderboardRes, refresh: refreshLeaderboard } = await useFetch(`/api/competitions/${compId}/leaderboard`)
 const liveLeaderboard = computed(() => leaderboardRes.value?.data?.leaderboard || [])
 
+const { data: twosRes, refresh: refreshTwos } = await useFetch(`/api/competitions/${compId}/twos`)
+const twosEntries = computed(() => twosRes.value?.data || [])
+
+const twosPot = computed(() => Number(competition.value?.potAmount || 0))
+const twosSplit = computed(() => {
+  const pot = twosPot.value
+  const count = twosEntries.value.length
+  return count > 0 ? (pot / count).toFixed(2) : '0.00'
+})
+
+// Weather
+const weather = ref<any>(null)
+const weatherLoading = ref(false)
+const fetchWeather = async () => {
+  if (!competition.value?.courseId) return
+  try {
+    const courseRes: any = await $fetch(`/api/courses/${competition.value.courseId}`)
+    const course = courseRes?.data
+    if (course?.latitude && course?.longitude) {
+      weatherLoading.value = true
+      const weatherRes: any = await $fetch('/api/weather', { query: { latitude: course.latitude, longitude: course.longitude } })
+      weather.value = weatherRes?.data || null
+    }
+  } catch (e) {
+    console.error('Weather fetch failed', e)
+  } finally {
+    weatherLoading.value = false
+  }
+}
+
 const isLeaderboardReleased = computed(() => {
   return competition.value?.scoresReleased === 1 || competition.value?.scoresReleased === true || competition.value?.status === 'CLOSED'
 })
@@ -61,7 +91,12 @@ let pollTimer: any = null
 onMounted(async () => {
   await refreshLeaderboard()
   await refreshLobby()
-  pollTimer = setInterval(() => { refreshLeaderboard() }, 8000)
+  await refreshTwos()
+  await fetchWeather()
+  pollTimer = setInterval(() => {
+    refreshLeaderboard()
+    refreshTwos()
+  }, 8000)
 })
 onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
 
@@ -213,6 +248,42 @@ const handleReleaseScores = async () => {
         </div>
       </div>
 
+      <!-- 2's Club Pot -->
+      <div v-if="competition.potAmount" class="bg-slate-950/90 border border-emerald-500/30 p-2.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-inner relative z-10">
+        <div class="flex items-center gap-1 text-emerald-400 font-black text-[10px] uppercase tracking-wider">
+          <div class="w-6 h-6 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+            <UIcon name="i-heroicons-golf-flag" class="w-3 h-3" />
+          </div>
+          <span>2's Club Pot: £{{ twosPot }}</span>
+        </div>
+        <div class="flex items-center gap-2 text-[10px] text-slate-400">
+          <span>{{ twosEntries.length }} member{{ twosEntries.length !== 1 ? 's' : '' }} in the pot</span>
+          <span v-if="twosEntries.length > 0" class="text-emerald-400 font-bold">Split: £{{ twosSplit }} each</span>
+        </div>
+        <div v-if="twosEntries.length > 0" class="mt-1.5 flex flex-wrap gap-1">
+          <span v-for="t in twosEntries" :key="t.id" class="px-2 py-0.5 bg-emerald-500/10 text-emerald-300 rounded-md text-[10px] font-semibold">
+            {{ t.playerName }} (H{{ t.holeNumber }})
+          </span>
+        </div>
+      </div>
+
+      <!-- Weather Forecast -->
+      <div v-if="weather" class="bg-slate-950/90 border border-blue-500/30 p-2.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-inner relative z-10">
+        <div class="flex items-center gap-2 text-blue-400 font-black text-[10px] uppercase tracking-wider">
+          <div class="w-6 h-6 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+            <UIcon name="i-heroicons-cloud" class="w-3 h-3" />
+          </div>
+          <span>Weather Forecast</span>
+        </div>
+        <div class="flex items-center gap-4 text-[10px]">
+          <span class="text-slate-400">{{ weather.description }}</span>
+          <span class="text-blue-400 font-bold">{{ weather.temperature }}°C</span>
+          <span class="text-slate-400">High {{ weather.maxTemp }}° / Low {{ weather.minTemp }}°</span>
+          <span v-if="weather.precipProbability > 0" class="text-blue-400">🌧️ {{ weather.precipProbability }}% rain</span>
+          <span class="text-slate-400">💨 {{ weather.windspeed }} km/h</span>
+        </div>
+      </div>
+
       <!-- Status / Action Banners -->
       <div v-if="isClosed" class="bg-slate-950/90 border border-slate-800 p-3 rounded-2xl text-center space-y-1 shadow-inner relative z-10">
         <span class="text-sm font-bold text-slate-200 block">Competition Closed</span>
@@ -344,7 +415,7 @@ const handleReleaseScores = async () => {
               <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">Hole-by-Hole</span>
               <div class="grid grid-cols-3 gap-1.5">
                 <div v-for="(strokes, idx) in selectedScorecard.parsedHoles" :key="idx" class="p-2 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between text-[10px] shadow-sm">
-                  <span class="font-bold text-slate-400">Hole {{ idx + 1 }}</span>
+                  <span class="font-bold text-slate-400">Hole {{ Number(idx) + 1 }}</span>
                   <span class="font-black text-white bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-lg shadow-inner">{{ strokes ?? '-' }}</span>
                 </div>
               </div>
