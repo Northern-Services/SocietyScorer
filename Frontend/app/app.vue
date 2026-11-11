@@ -35,23 +35,33 @@ const isActive = (to: string) => {
       </main>
 
       <!-- Bottom Tab Navigation (thumb-friendly, full width) -->
-      <nav class="fixed left-0 right-0 bottom-0 z-50 border-t border-slate-800/90 bg-slate-950/95 backdrop-blur-3xl p-2 pt-1.5 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl">
-        <div class="flex items-center justify-between text-[10px] leading-none">
-          <template v-for="(tab, i) in tabs" :key="i">
-            <NuxtLink
-              :to="tab.to"
-              :class="isActive(tab.to) ? 'text-emerald-400' : 'text-slate-500'"
-              class="flex flex-col items-center justify-center gap-1 min-w-0"
-            >
-              <div class="relative flex h-6 w-6 items-center justify-center">
-                <UIcon :name="tab.icon" class="w-5 h-5 shrink-0" />
-                <span v-if="isActive(tab.to)" class="absolute -top-1 -right-1 w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-              </div>
-              <span class="font-bold leading-tight">{{ tab.label }}</span>
-            </NuxtLink>
-          </template>
-        </div>
-      </nav>
+      <nav class="fixed left-0 right-0 bottom-0 z-50 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur-3xl px-3 py-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl font-mono">
+          <div class="max-w-md mx-auto flex items-center justify-between text-[10px] tracking-wider uppercase">
+            <template v-for="(tab, i) in tabs" :key="i">
+              <NuxtLink
+                :to="tab.to"
+                class="group relative flex flex-col items-center justify-center gap-1.5 py-1 px-3 transition-colors flex-1"
+                :class="isActive(tab.to) ? 'text-orange-400 font-bold' : 'text-zinc-500 hover:text-zinc-300'"
+              >
+                <!-- Active top indicator line (Cloudflare status style) -->
+                <span
+                  v-if="isActive(tab.to)"
+                  class="absolute -top-2 left-1/2 -translate-x-1/2 w-6 h-[2px] bg-orange-500 shadow-[0_0_8px_rgba(246,130,31,0.5)]"
+                ></span>
+
+                <div class="relative flex h-5 w-5 items-center justify-center">
+                  <UIcon
+                    :name="tab.icon"
+                    class="w-4 h-4 shrink-0 transition-transform group-hover:scale-115"
+                    :class="isActive(tab.to) ? 'text-orange-400' : 'text-zinc-500 group-hover:text-zinc-300'"
+                  />
+                </div>
+
+                <span class="leading-none text-[9px] truncate">{{ tab.label }}</span>
+              </NuxtLink>
+            </template>
+          </div>
+        </nav>
 
     </div>
   </UApp>

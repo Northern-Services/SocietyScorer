@@ -25,7 +25,7 @@ const editName = ref('')
 const editHandicap = ref(18.0)
 const settingsSaving = ref(false)
 const settingsSuccessMessage = ref('')
-const settingsErrorMessage = ''
+const settingsErrorMessage = ref('')
 
 // Fetch current authentication status
 const { data: userRes, refresh: refreshUser } = await useFetch('/api/auth/me', {
@@ -202,53 +202,92 @@ const items = computed(() => {
 </script>
 
 <template>
-  <header class="relative z-30 w-full px-3 pt-3 pb-1.5 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
-    
-    <div class="flex items-center justify-between gap-2.5">
-      <!-- LEFT: Logo -->
-      <NuxtLink to="/" class="focus-visible:outline-2 outline-emerald-500 rounded-2xl p-1 flex items-center gap-2 group hover:bg-slate-800/50 transition-colors">
-        <AppLogo />
-      </NuxtLink>
+  <header class="sticky top-0 z-30 w-full bg-[#0B0D10]/95 backdrop-blur-md border-b border-zinc-800">
+    <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+      
+      <!-- LEFT: Logo + Desktop Nav -->
+      <div class="flex items-center gap-6">
+        <NuxtLink
+          to="/"
+          class="focus-visible:outline-2 outline-orange-500 rounded-sm p-1 flex items-center gap-2 group hover:bg-zinc-900 transition-colors"
+        >
+          <AppLogo />
+        </NuxtLink>
+
+        <!-- Desktop Navigation Links -->
+        <nav class="hidden md:flex items-center gap-1 border-l border-zinc-800 pl-5">
+          <NuxtLink
+            v-for="item in items"
+            :key="item.to"
+            :to="item.to"
+            class="px-2.5 py-1.5 rounded-sm text-xs font-medium transition-colors"
+            :class="route.path === item.to
+              ? 'bg-zinc-900 text-orange-400 border border-zinc-800'
+              : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/50'"
+          >
+            {{ item.label }}
+          </NuxtLink>
+        </nav>
+      </div>
 
       <!-- RIGHT: Search + User Controls -->
       <div class="flex items-center gap-2">
         
-        <!-- Search (always visible on mobile) -->
-        <div ref="searchContainerRef" class="relative hidden sm:block w-48">
+        <!-- Search (Desktop / Tablet) -->
+        <div ref="searchContainerRef" class="relative hidden sm:block w-52">
           <div class="relative flex items-center">
             <input
               v-model="searchQuery"
               type="text"
               placeholder="Search members..."
               @focus="showSearchDropdown = searchQuery.trim().length >= 2"
-              class="w-full pl-9 pr-8 py-2 bg-slate-950/80 border border-slate-800/90 focus:border-emerald-500/80 rounded-xl text-[12px] text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner"
+              class="w-full pl-8 pr-7 py-1.5 bg-zinc-950 border border-zinc-800 focus:border-orange-500/80 rounded-sm text-xs font-mono text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors"
             />
-            <UIcon name="i-heroicons-magnifying-glass" class="w-4 h-4 text-slate-500 absolute left-3 pointer-events-none" />
-            <span v-if="searchLoading" class="w-3.5 h-3.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin absolute right-2.5"></span>
-            <button v-else-if="searchQuery" @click="searchQuery = ''" class="absolute right-2.5 text-slate-500 hover:text-slate-300 text-xs font-bold">✕</button>
+            <UIcon name="i-heroicons-magnifying-glass" class="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 pointer-events-none" />
+            <span v-if="searchLoading" class="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin absolute right-2.5"></span>
+            <button
+              v-else-if="searchQuery"
+              @click="searchQuery = ''"
+              class="absolute right-2 text-zinc-500 hover:text-zinc-200 font-mono text-[11px] cursor-pointer"
+            >
+              ✕
+            </button>
           </div>
+
+          <!-- Search Results Dropdown -->
           <transition name="dropdown">
-            <div v-if="showSearchDropdown" class="absolute top-full left-0 right-0 mt-2 bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden z-50 max-h-[200px] overflow-y-auto space-y-1 p-1">
-              <div v-if="searchLoading" class="p-2 text-center text-[11px] text-slate-400">Searching members...</div>
-              <div v-else-if="searchResults.length === 0" class="p-2 text-center text-[11px] text-slate-500">No members found</div>
+            <div
+              v-if="showSearchDropdown"
+              class="absolute top-full left-0 right-0 mt-1.5 bg-zinc-950 border border-zinc-800 rounded-sm shadow-2xl overflow-hidden z-50 max-h-[240px] overflow-y-auto divide-y divide-zinc-800/80"
+            >
+              <div v-if="searchLoading" class="p-3 text-center font-mono text-[11px] text-zinc-400">
+                QUERYING_MEMBERS...
+              </div>
+              <div v-else-if="searchResults.length === 0" class="p-3 text-center font-mono text-[11px] text-zinc-500">
+                NO_MATCHES_FOUND
+              </div>
               <template v-else>
                 <NuxtLink
                   v-for="resUser in searchResults"
                   :key="resUser.id"
                   :to="`/player/${resUser.id}`"
                   @click="showSearchDropdown = false"
-                  class="flex items-center justify-between p-2 hover:bg-slate-800/80 rounded-xl transition-colors group"
+                  class="flex items-center justify-between p-2.5 hover:bg-zinc-900 transition-colors group"
                 >
-                  <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[11px] flex items-center justify-center shrink-0">
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-6 h-6 rounded-sm bg-zinc-900 border border-zinc-700 text-orange-400 font-mono font-bold text-[11px] flex items-center justify-center shrink-0">
                       {{ resUser.name.charAt(0).toUpperCase() }}
                     </div>
                     <div class="text-left leading-tight truncate">
-                      <span class="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors block truncate">{{ resUser.name }}</span>
-                      <span class="text-[10px] text-slate-400">@{{ resUser.username }}</span>
+                      <span class="text-xs font-semibold text-zinc-100 group-hover:text-orange-400 transition-colors block truncate">
+                        {{ resUser.name }}
+                      </span>
+                      <span class="text-[10px] font-mono text-zinc-500 block truncate">
+                        @{{ resUser.username }}
+                      </span>
                     </div>
                   </div>
-                  <span class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                  <span class="text-[10px] font-mono font-semibold text-orange-400 bg-orange-500/10 border border-orange-500/30 px-1.5 py-0.5 rounded-sm shrink-0">
                     HCP {{ resUser.handicapIndex }}
                   </span>
                 </NuxtLink>
@@ -259,8 +298,19 @@ const items = computed(() => {
 
         <!-- LOGGED OUT -->
         <template v-if="!isLoggedIn">
-          <UButton label="Sign In" color="neutral" variant="ghost" to="/login" size="sm" class="text-slate-400 hover:text-white" />
-          <UButton label="Register" color="success" variant="solid" to="/register" size="sm" class="font-semibold shadow-md shadow-emerald-500/20" />
+          <UButton
+            label="Sign In"
+            variant="ghost"
+            to="/login"
+            size="xs"
+            class="rounded-sm text-zinc-400 hover:text-white hover:bg-zinc-900 font-medium px-3 py-1.5"
+          />
+          <UButton
+            label="Register"
+            to="/register"
+            size="xs"
+            class="rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold tracking-tight px-3 py-1.5 transition-colors"
+          />
         </template>
 
         <!-- LOGGED IN CONTROLS -->
@@ -269,56 +319,67 @@ const items = computed(() => {
           <div ref="notificationsContainerRef" class="relative">
             <button
               @click="showNotifications = !showNotifications"
-              class="w-8 h-8 shrink-0 rounded-xl border border-slate-800/90 hover:border-emerald-500/50 flex items-center justify-center transition-all group cursor-pointer text-left shadow-inner relative"
+              aria-label="Notifications"
+              class="w-8 h-8 shrink-0 rounded-sm bg-zinc-950 border border-zinc-800 hover:border-orange-500/60 flex items-center justify-center transition-colors group cursor-pointer relative"
             >
-              <UIcon name="i-heroicons-bell" class="w-4 h-4 text-slate-400 group-hover:text-emerald-400 transition-colors" />
-              <span v-if="pendingRequests.length > 0" class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-950"></span>
+              <UIcon name="i-heroicons-bell" class="w-4 h-4 text-zinc-400 group-hover:text-orange-400 transition-colors" />
+              <span
+                v-if="pendingRequests.length > 0"
+                class="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-[#0B0D10]"
+              ></span>
             </button>
 
             <!-- Notification Dropdown -->
             <transition name="dropdown">
-              <div v-if="showNotifications" class="absolute top-full right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden z-50 p-2 space-y-1">
-                <div class="flex items-center justify-between pb-2 border-b border-slate-800/80 mb-1">
-                  <h3 class="text-xs font-bold text-white uppercase tracking-wider">Friend Requests</h3>
-                  <span class="text-[10px] text-slate-500 font-bold">{{ pendingRequests.length }}</span>
+              <div
+                v-if="showNotifications"
+                class="absolute top-full right-0 mt-1.5 w-80 bg-zinc-950 border border-zinc-800 rounded-sm shadow-2xl overflow-hidden z-50"
+              >
+                <div class="flex items-center justify-between px-3 py-2 bg-zinc-900/70 border-b border-zinc-800">
+                  <h3 class="text-[11px] font-mono font-bold text-zinc-200 uppercase tracking-wider">
+                    Friend Requests
+                  </h3>
+                  <span class="text-[10px] font-mono text-orange-400 bg-orange-500/10 border border-orange-500/30 px-1.5 py-0.5 rounded-sm">
+                    {{ pendingRequests.length }}
+                  </span>
                 </div>
 
-                <div v-if="notificationsLoading" class="p-2 text-center text-[11px] text-slate-400">Loading...</div>
-
-                <div v-else-if="pendingRequests.length === 0" class="p-3 text-center text-[11px] text-slate-500">
-                  No new friend requests.
+                <div v-if="notificationsLoading" class="p-4 text-center font-mono text-[11px] text-zinc-400">
+                  SYNCING_REQUESTS...
                 </div>
 
-                <div v-else class="space-y-1">
+                <div v-else-if="pendingRequests.length === 0" class="p-4 text-center font-mono text-[11px] text-zinc-500">
+                  NO_PENDING_REQUESTS
+                </div>
+
+                <div v-else class="divide-y divide-zinc-800/80 max-h-72 overflow-y-auto">
                   <div
                     v-for="req in pendingRequests"
                     :key="req.friendshipId"
-                    class="p-2 bg-slate-800/50 border border-slate-700/50 rounded-xl space-y-1"
+                    class="p-3 hover:bg-zinc-900/40 transition-colors space-y-2"
                   >
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="flex items-center gap-2 min-w-0">
-                        <div class="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0">
-                          {{ req.name.charAt(0).toUpperCase() }}
-                        </div>
-                        <div class="leading-tight min-w-0">
-                          <span class="text-xs font-bold text-white truncate block">{{ req.name }}</span>
-                          <span class="text-[9px] text-slate-400 truncate block">@{{ req.username }}</span>
-                        </div>
+                    <div class="flex items-center gap-2.5 min-w-0">
+                      <div class="w-6 h-6 rounded-sm bg-zinc-900 border border-zinc-700 text-orange-400 font-mono font-bold text-[10px] flex items-center justify-center shrink-0">
+                        {{ req.name.charAt(0).toUpperCase() }}
+                      </div>
+                      <div class="leading-tight min-w-0">
+                        <span class="text-xs font-semibold text-zinc-100 truncate block">{{ req.name }}</span>
+                        <span class="text-[10px] font-mono text-zinc-500 truncate block">@{{ req.username }}</span>
                       </div>
                     </div>
-                    <p class="text-[10px] text-slate-400 leading-relaxed">has requested to be your friend!</p>
-                    <div class="flex gap-1 pt-1">
+                    <p class="text-[11px] text-zinc-400">Sent a society friend request.</p>
+                    <div class="flex gap-1.5 pt-0.5">
                       <button
                         @click="handleAcceptRequest(req.friendshipId, req.friendId)"
-                        class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold rounded-lg shadow-sm shadow-emerald-600/20 transition-all cursor-pointer active:scale-95"
+                        class="flex-1 py-1 bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 text-[11px] font-bold rounded-sm transition-colors cursor-pointer"
                       >
                         Accept
                       </button>
                       <button
                         @click="handleRefuseRequest(req.friendshipId, req.friendId)"
-                        class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer active:scale-95"
+                        class="flex-1 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 text-[11px] font-medium rounded-sm transition-colors cursor-pointer"
                       >
-                        Refuse
+                        Decline
                       </button>
                     </div>
                   </div>
@@ -327,114 +388,177 @@ const items = computed(() => {
             </transition>
           </div>
 
+          <!-- Settings Trigger -->
           <button
             @click="showSettingsModal = true"
-            class="w-8 h-8 shrink-0 rounded-xl border border-slate-800/90 hover:border-emerald-500/50 flex items-center justify-center transition-all group cursor-pointer text-left shadow-inner"
+            aria-label="Player Settings"
+            class="w-8 h-8 shrink-0 rounded-sm bg-zinc-950 border border-zinc-800 hover:border-orange-500/60 flex items-center justify-center transition-colors group cursor-pointer"
           >
-            <UIcon name="i-heroicons-cog-6-tooth" class="w-4 h-4 text-slate-400 group-hover:text-emerald-400 transition-colors" />
+            <UIcon name="i-heroicons-cog-6-tooth" class="w-4 h-4 text-zinc-400 group-hover:text-orange-400 transition-colors" />
           </button>
-          <UButton
-            icon="i-heroicons-arrow-right-start-on-rectangle"
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            aria-label="Sign out"
-            class="text-slate-400 hover:text-red-400"
+
+          <!-- Sign Out Trigger -->
+          <button
             @click="handleLogout"
-          />
+            aria-label="Sign out"
+            class="w-8 h-8 shrink-0 rounded-sm bg-zinc-950 border border-zinc-800 hover:border-red-500/50 flex items-center justify-center transition-colors group cursor-pointer"
+          >
+            <UIcon name="i-heroicons-arrow-right-start-on-rectangle" class="w-4 h-4 text-zinc-400 group-hover:text-red-400 transition-colors" />
+          </button>
         </template>
+
+        <!-- Mobile Menu Toggle -->
+        <button
+          @click="showMobileMenu = !showMobileMenu"
+          aria-label="Toggle Menu"
+          class="md:hidden w-8 h-8 shrink-0 rounded-sm bg-zinc-950 border border-zinc-800 hover:border-zinc-600 flex items-center justify-center text-zinc-300 cursor-pointer"
+        >
+          <UIcon :name="showMobileMenu ? 'i-heroicons-x-mark' : 'i-heroicons-bars-3'" class="w-4 h-4" />
+        </button>
       </div>
     </div>
 
-    <!-- MOBILE MENU DRAWER (full width overlay) -->
+    <!-- MOBILE MENU DRAWER -->
     <transition name="dropdown">
-      <div v-if="showMobileMenu" class="absolute top-full left-0 right-0 mt-1.5 bg-slate-900/95 border border-slate-800 rounded-2xl p-3 shadow-2xl backdrop-blur-xl space-y-2 z-50">
-        <div class="relative mb-3">
+      <div
+        v-if="showMobileMenu"
+        class="md:hidden border-t border-zinc-800 bg-[#0B0D10] px-4 py-3 space-y-3 shadow-2xl"
+      >
+        <div class="relative">
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Search society members..."
-            class="w-full pl-9 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            class="w-full pl-8 pr-4 py-2 bg-zinc-950 border border-zinc-800 rounded-sm text-xs font-mono text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-orange-500"
           />
-          <UIcon name="i-heroicons-magnifying-glass" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+          <UIcon name="i-heroicons-magnifying-glass" class="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-2.5" />
         </div>
-        <div class="grid grid-cols-1 gap-1">
+
+        <div class="border border-zinc-800 divide-y divide-zinc-800 bg-zinc-950/60">
           <NuxtLink
             v-for="item in items"
             :key="item.to"
             :to="item.to"
             @click="showMobileMenu = false"
-            class="px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between"
-            :class="route.path === item.to ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'"
+            class="px-3 py-2.5 text-xs font-medium transition-colors flex items-center justify-between"
+            :class="route.path === item.to ? 'bg-zinc-900 text-orange-400 font-semibold' : 'text-zinc-300 hover:bg-zinc-900/50 hover:text-white'"
           >
             <span>{{ item.label }}</span>
-            <UIcon name="i-heroicons-chevron-right" class="w-3.5 h-3.5 text-slate-500" />
+            <span class="font-mono text-[10px] text-zinc-600">→</span>
           </NuxtLink>
         </div>
-        <div v-if="!isLoggedIn" class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
-          <UButton label="Sign In" color="neutral" variant="outline" to="/login" size="sm" block @click="showMobileMenu = false" />
-          <UButton label="Register" color="success" variant="solid" to="/register" size="sm" block class="font-semibold" @click="showMobileMenu = false" />
+
+        <div v-if="!isLoggedIn" class="grid grid-cols-2 gap-2 pt-1">
+          <UButton
+            label="Sign In"
+            variant="outline"
+            to="/login"
+            size="sm"
+            block
+            class="rounded-sm border-zinc-700 text-zinc-200 hover:bg-zinc-900"
+            @click="showMobileMenu = false"
+          />
+          <UButton
+            label="Register"
+            to="/register"
+            size="sm"
+            block
+            class="rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold"
+            @click="showMobileMenu = false"
+          />
         </div>
       </div>
     </transition>
 
-    <!-- SETTINGS MODAL (bottom sheet on mobile) -->
+    <!-- SETTINGS MODAL -->
     <Transition name="modal">
       <div
         v-if="showSettingsModal"
-        class="fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-md"
+        class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
         @click.self="showSettingsModal = false"
       >
-        <!-- Bottom sheet content anchored to bottom of viewport -->
-        <div class="flex bottom-0 left-0 right-0 z-[71]">
-          <div class="bg-slate-900 border border-slate-800 w-full rounded-t-3xl p-5 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                  <UIcon name="i-heroicons-cog-6-tooth" class="w-4 h-4" />
-                </div>
-                <h2 class="text-base font-bold text-white">Player Settings</h2>
+        <div class="bg-zinc-950 border-t sm:border border-zinc-800 w-full sm:max-w-md rounded-t-md sm:rounded-sm shadow-2xl overflow-hidden">
+          
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between px-4 py-3 bg-zinc-900/60 border-b border-zinc-800">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-heroicons-cog-6-tooth" class="w-4 h-4 text-orange-400" />
+              <h2 class="text-xs font-mono font-bold uppercase tracking-wider text-zinc-100">
+                Player Configuration
+              </h2>
+            </div>
+            <button
+              @click="showSettingsModal = false"
+              class="w-6 h-6 flex items-center justify-center rounded-sm border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-600 font-mono text-xs transition-colors cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <!-- Modal Body -->
+          <div class="p-4 space-y-4">
+            <div v-if="settingsSuccessMessage" class="p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs rounded-sm">
+              ✓ {{ settingsSuccessMessage }}
+            </div>
+            <div v-if="settingsErrorMessage" class="p-2.5 bg-red-500/10 border border-red-500/30 text-red-400 font-mono text-xs rounded-sm">
+              ! {{ settingsErrorMessage }}
+            </div>
+
+            <div class="space-y-3">
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
+                  Display Name
+                </label>
+                <input
+                  v-model="editName"
+                  type="text"
+                  class="w-full px-3 py-2 bg-[#0B0D10] border border-zinc-800 rounded-sm text-zinc-100 text-sm focus:outline-none focus:border-orange-500 transition-colors"
+                />
               </div>
-              <button
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
+                  WHS Handicap Index
+                </label>
+                <input
+                  v-model.number="editHandicap"
+                  type="number"
+                  step="0.1"
+                  min="-5.0"
+                  max="54.0"
+                  class="w-full px-3 py-2 bg-[#0B0D10] border border-zinc-800 rounded-sm text-zinc-100 font-mono text-sm font-bold focus:outline-none focus:border-orange-500 transition-colors"
+                />
+                <p class="text-[11px] font-mono text-zinc-500">
+                  // .5 index values round up automatically
+                </p>
+              </div>
+            </div>
+
+            <div class="flex gap-2 pt-2 border-t border-zinc-800/80">
+              <UButton
                 @click="showSettingsModal = false"
-                class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800/60 text-white text-lg font-bold hover:bg-emerald-500/60 transition-colors cursor-pointer"
+                variant="outline"
+                block
+                size="sm"
+                class="rounded-sm border-zinc-700 text-zinc-300 hover:bg-zinc-900 cursor-pointer"
               >
-                ✕
-              </button>
-            </div>
-
-            <div v-if="settingsSuccessMessage" class="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] rounded-xl font-medium">
-              {{ settingsSuccessMessage }}
-            </div>
-            <div v-if="settingsErrorMessage" class="p-3 bg-red-500/10 border border-red-500/30 text-red-300 text-[11px] rounded-xl font-medium">
-              {{ settingsErrorMessage }}
-            </div>
-
-            <div class="space-y-4 overflow-y-auto max-h-[60vh] pr-1">
-              <div class="space-y-1.5">
-                <label class="text-sm font-bold uppercase tracking-wider text-slate-400 block">Display Name</label>
-                <input v-model="editName" type="text" class="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-base focus:outline-none focus:border-emerald-500" />
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-sm font-bold uppercase tracking-wider text-slate-400 block">WHS Handicap Index</label>
-                <input v-model.number="editHandicap" type="number" step="0.1" min="-5.0" max="54.0" class="w-full px-3.5 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white text-base font-bold focus:outline-none focus:border-emerald-500" />
-                <p class="text-xs text-slate-500">Note: .5 handicap values round up automatically.</p>
-              </div>
-            </div>
-
-            <div class="flex gap-3 pt-2">
-              <UButton @click="showSettingsModal = false" color="neutral" variant="ghost" block size="md" class="cursor-pointer">Cancel</UButton>
-              <UButton @click="handleSaveSettings" :disabled="settingsSaving" color="success" block size="md" class="font-semibold shadow-lg shadow-emerald-500/20 cursor-pointer">
+                Cancel
+              </UButton>
+              <UButton
+                @click="handleSaveSettings"
+                :disabled="settingsSaving"
+                block
+                size="sm"
+                class="rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold cursor-pointer"
+              >
                 {{ settingsSaving ? 'Saving...' : 'Save Changes' }}
               </UButton>
             </div>
-
-            <!-- Mobile drag indicator -->
-            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-2"></div>
           </div>
+
+          <!-- Safe area spacer for mobile -->
+          <div class="h-[env(safe-area-inset-bottom)] sm:hidden"></div>
         </div>
-        <!-- Bottom padding so content isn't hidden by home indicator -->
-        <div class="h-[max(1rem,env(safe-area-inset-bottom))]"></div>
       </div>
     </Transition>
   </header>
@@ -443,20 +567,20 @@ const items = computed(() => {
 <style scoped>
 .dropdown-enter-active,
 .dropdown-leave-active {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .dropdown-enter-from,
 .dropdown-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-4px);
 }
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
-  transform: scale(0.95);
+  transform: scale(0.98);
 }
 </style>

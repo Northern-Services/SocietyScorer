@@ -1,26 +1,30 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 
 const features = [
   {
+    code: 'MOD_01',
     icon: 'i-heroicons-pencil-square',
     title: 'Mobile Scorecard',
-    desc: 'Instant stroke entry built for phone screens on the fairway. Auto-calculates net scores & points on the fly.'
+    desc: 'Instant stroke entry built for one-handed use on the fairway. Auto-calculates net scores & Stableford points on the fly.'
   },
   {
+    code: 'MOD_02',
     icon: 'i-heroicons-calculator',
     title: 'WHS Handicap Engine',
-    desc: 'Applies playing handicaps, stroke index allocation, and automatic post-round handicap cuts.'
+    desc: 'Applies exact playing handicaps, stroke index allocation, and automated post-round society handicap adjustments.'
   },
   {
+    code: 'MOD_03',
     icon: 'i-heroicons-trophy',
     title: '2’s Club Detection',
-    desc: 'Never miss a 2’s pot entry again. Automatically catches birdies on par 3s and generates dividend breakdowns.'
+    desc: 'Zero missed pots. Automatically flags birdies on par 3s and calculates real-time dividend breakdowns per entrant.'
   },
   {
+    code: 'MOD_04',
     icon: 'i-heroicons-document-arrow-down',
     title: 'Branded PDF Reports',
-    desc: 'One-click export of official, formatted competition sheets ready for club noticeboards or WhatsApp.'
+    desc: 'One-click export of official competition sheets formatted for clubhouse noticeboards and WhatsApp distribution.'
   }
 ]
 
@@ -28,80 +32,148 @@ const { data: statsRes } = await useFetch('/api/stats')
 const stats = computed(() => statsRes.value?.data || { totalPlayers: 0, totalCompetitions: 0, totalPrizePool: 0 })
 
 const metrics = computed(() => [
-  { val: `${stats.value.totalPlayers}+`, label: 'Members' },
-  { val: `${stats.value.totalCompetitions}`, label: 'Fixtures' },
-  { val: `£${stats.value.totalPrizePool.toLocaleString()}`, label: 'Prize Pool' }
+  { val: `${stats.value.totalPlayers}+`, label: 'ACTIVE MEMBERS', sub: 'WHS Synced' },
+  { val: `${stats.value.totalCompetitions}`, label: 'FIXTURES LOGGED', sub: 'Season Telemetry' },
+  { val: `£${stats.value.totalPrizePool.toLocaleString()}`, label: 'PRIZE POOL', sub: 'Distributed' }
 ])
 </script>
 
 <template>
-  <div class="space-y-10 pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]">
+  <div class="relative min-h-screen bg-[#0B0D10] text-zinc-100 selection:bg-orange-500/30 selection:text-orange-200 pb-[max(8rem,env(safe-area-inset-bottom)+4rem)] overflow-hidden">
+    
+    <!-- Subtle Cloudflare Architectural Dot Grid Background -->
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:20px_20px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-60"></div>
 
-    <!-- Hero Section -->
-    <section class="relative pt-4 pb-6">
-      <div class="relative z-10 px-3 text-center space-y-4">
-        
-        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-emerald-500/30 text-emerald-300 text-[10px] font-semibold tracking-wide shadow-[0_0_20px_rgba(16,185,129,0.2)]">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>SOCIETY SCORER • LIVE STABLEFORD ENGINE</span>
+    <!-- Main Container -->
+    <div class="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 space-y-12">
+
+      <!-- Hero Section -->
+      <section class="space-y-6">
+        <div class="inline-flex items-center gap-2 px-2.5 py-1 border border-orange-500/30 bg-orange-500/10 text-orange-400 font-mono text-[11px] uppercase tracking-wider">
+          <span>Society Scorer</span>
+          <span class="text-zinc-600">/</span>
+          <span>Live Telemetry</span>
         </div>
 
-        <h1 class="text-3xl font-extrabold tracking-tight text-white leading-[1.15]">
-          Precision Golf Scoring.<br class="block"/>
-          <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_35px_rgba(16,185,129,0.3)]">
-            Zero Math On The 18th.
-          </span>
-        </h1>
+        <div class="space-y-4">
+          <h1 class="text-4xl sm:text-5xl font-bold tracking-tight text-white leading-[1.08]">
+            Precision golf scoring.
+            <span class="block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500">
+              Zero math on the 18th.
+            </span>
+          </h1>
 
-        <p class="text-sm text-slate-400 max-w-xs mx-auto leading-relaxed">
-          The mobile companion for Earlybirds Golf Society. Automatic handicap adjustments and 2’s club dividend tracking.
-        </p>
+          <p class="text-sm sm:text-base text-zinc-400 max-w-xl leading-relaxed font-normal">
+            The mobile scoring infrastructure for Earlybirds Golf Society. Real-time WHS handicap strokes, Stableford calculation, and automated 2’s club payouts.
+          </p>
+        </div>
 
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-2 mt-4">
-          <UButton to="/dashboard" color="success" variant="solid" size="sm" icon="i-lucide-house" class="font-bold w-full sm:w-auto shadow-lg shadow-emerald-500/20">
+        <!-- Sharp Cloudflare-style Action Buttons -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
+          <UButton
+            to="/dashboard"
+            size="md"
+            icon="i-lucide-layout-dashboard"
+            class="justify-center rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold tracking-tight transition-colors shadow-[0_0_25px_rgba(246,130,31,0.25)]"
+          >
             Enter Dashboard
           </UButton>
-          <UButton to="/courses" color="success" variant="soft" size="sm" icon="i-heroicons-pencil-square" class="font-semibold w-full sm:w-auto">
+          <UButton
+            to="/courses"
+            variant="outline"
+            size="md"
+            icon="i-heroicons-pencil-square"
+            class="justify-center rounded-sm border-zinc-700 bg-zinc-900/60 hover:bg-zinc-800 hover:border-zinc-500 text-zinc-200 font-semibold transition-colors"
+          >
             Start Scorecard
           </UButton>
         </div>
-      </div>
-    </section>
 
-    <!-- Features Section -->
-    <section id="features" class="scroll-mt-24 px-3 space-y-6">
-      <div class="text-center space-y-2">
-        <UBadge variant="subtle" color="success" class="uppercase tracking-widest text-[10px] px-3 py-1 font-bold">Feature Breakdown</UBadge>
-        <h2 class="text-2xl font-extrabold text-white tracking-tight">Built For The Fairway</h2>
-        <p class="text-sm text-slate-400">Every feature designed around phone-first scoring while walking the course.</p>
-      </div>
-
-      <div class="space-y-4">
-        <div
-          v-for="(item, i) in features"
-          :key="i"
-          class="group relative bg-slate-900/60 border border-slate-800/80 p-4 rounded-2xl hover:border-emerald-500/50 hover:shadow-[0_0_30px_rgba(16,185,129,0.12)] transition-all duration-300 space-y-3"
-        >
-          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <UIcon :name="item.icon" class="w-5 h-5" />
+        <!-- Mini Live Engine Preview Card (Cloudflare Console Aesthetic) -->
+        <div class="border border-zinc-800 bg-zinc-950/90 divide-y divide-zinc-800/80 font-mono text-xs">
+          <div class="px-3.5 py-2 bg-zinc-900/50 flex items-center justify-between text-[11px] text-zinc-400">
+            <span>HOLE_18 // PAR 4 • SI 6</span>
+            <span class="text-emerald-400">● SYNCED</span>
           </div>
-          <h3 class="text-base font-bold text-white group-hover:text-emerald-300 transition-colors">{{ item.title }}</h3>
-          <p class="text-sm text-slate-400 leading-relaxed">{{ item.desc }}</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Metrics Strip -->
-    <section id="metrics" class="scroll-mt-24 border-t border-slate-800/80 bg-slate-900/40 backdrop-blur-md py-6 relative px-3">
-      <div class="grid grid-cols-3 gap-3 text-center">
-        <div v-for="(metric, i) in metrics" :key="i" class="space-y-1">
-          <div class="text-xl font-extrabold bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent tracking-tight">
-            {{ metric.val }}
+          <div class="grid grid-cols-4 divide-x divide-zinc-800/80 text-center py-3">
+            <div>
+              <div class="text-[10px] text-zinc-500 uppercase">Gross</div>
+              <div class="text-sm font-bold text-white mt-0.5">4</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-zinc-500 uppercase">Shots</div>
+              <div class="text-sm font-bold text-orange-400 mt-0.5">+1</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-zinc-500 uppercase">Net</div>
+              <div class="text-sm font-bold text-white mt-0.5">3</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-zinc-500 uppercase">Points</div>
+              <div class="text-sm font-bold text-emerald-400 mt-0.5">3 PTS</div>
+            </div>
           </div>
-          <div class="text-[10px] text-slate-400 font-medium tracking-wide uppercase">{{ metric.label }}</div>
         </div>
-      </div>
-    </section>
+      </section>
 
+      <!-- Telemetry Metrics Strip (Border-Collapsed Matrix) -->
+      <section id="metrics" class="scroll-mt-24">
+        <div class="border border-zinc-800 bg-zinc-900/30 grid grid-cols-3 divide-x divide-zinc-800">
+          <div v-for="(metric, i) in metrics" :key="i" class="p-3.5 sm:p-5 space-y-1">
+            <div class="text-[10px] font-mono text-zinc-500 tracking-wider uppercase truncate">
+              {{ metric.label }}
+            </div>
+            <div class="text-xl sm:text-2xl font-bold font-mono text-white tracking-tight">
+              {{ metric.val }}
+            </div>
+            <div class="text-[10px] text-orange-400/80 font-mono hidden sm:block">
+              {{ metric.sub }}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features Section (Architectural Bento Grid) -->
+      <section id="features" class="scroll-mt-24 space-y-4">
+        <div class="flex items-end justify-between border-b border-zinc-800 pb-3">
+          <div>
+            <div class="text-[11px] font-mono text-orange-400 uppercase tracking-widest">System Architecture</div>
+            <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight mt-0.5">Built for the fairway</h2>
+          </div>
+          <span class="text-xs font-mono text-zinc-500 hidden sm:inline">04 MODULES</span>
+        </div>
+
+        <!-- 1px Hairline Border Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 border-t border-l border-zinc-800 bg-zinc-950/60">
+          <div
+            v-for="(item, i) in features"
+            :key="i"
+            class="group relative border-r border-b border-zinc-800 p-5 hover:bg-zinc-900/60 transition-colors space-y-3"
+          >
+            <!-- Top Corner Accent Bar on Hover -->
+            <div class="absolute top-0 left-0 w-full h-[2px] bg-orange-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+
+            <div class="flex items-center justify-between">
+              <div class="w-8 h-8 border border-zinc-700 bg-zinc-900 text-orange-400 flex items-center justify-center group-hover:border-orange-500/50 transition-colors">
+                <UIcon :name="item.icon" class="w-4 h-4" />
+              </div>
+              <span class="font-mono text-[10px] text-zinc-600 group-hover:text-zinc-400 transition-colors">
+                {{ item.code }}
+              </span>
+            </div>
+
+            <div class="space-y-1.5">
+              <h3 class="text-base font-bold text-zinc-100 group-hover:text-orange-400 transition-colors">
+                {{ item.title }}
+              </h3>
+              <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+                {{ item.desc }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
   </div>
 </template>
