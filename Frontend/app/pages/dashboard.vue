@@ -26,6 +26,7 @@ const formatUKDateOnly = (isoString: string) => {
 // SCORECARD BREAKDOWN MODAL STATE
 const selectedScorecard = ref<any>(null)
 const showDetailModal = ref(false)
+const holePage = ref<1 | 2>(1)
 
 const openScorecardDetail = (sc: any) => {
   let parsedHoles: number[] = []
@@ -34,9 +35,17 @@ const openScorecardDetail = (sc: any) => {
   } catch (err) {
     parsedHoles = []
   }
+  holePage.value = 1
   selectedScorecard.value = { ...sc, parsedHoles }
   showDetailModal.value = true
 }
+
+const displayedHoles = computed(() => {
+  if (!selectedScorecard.value?.parsedHoles) return []
+  return holePage.value === 1
+    ? selectedScorecard.value.parsedHoles.slice(0, 9)
+    : selectedScorecard.value.parsedHoles.slice(9, 18)
+})
 
 // 1. Fetch live player profile and require auth
 const { data: userRes, error: userError } = await useFetch('/api/auth/me', {
@@ -90,317 +99,373 @@ watch(showDetailModal, (isOpen) => {
 </script>
 
 <template>
-  <div class="px-3 py-4 space-y-5 pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]">
+  <div class="max-w-3xl mx-auto px-4 py-6 space-y-8 pb-[max(8rem,env(safe-area-inset-bottom)+4rem)]">
 
-    <!-- Player Welcome Card -->
-    <div class="relative bg-slate-900/90 border border-slate-800/80 p-4 rounded-3xl backdrop-blur-xl shadow-2xl overflow-hidden space-y-4">
-      <div class="pointer-events-none absolute -top-8 -right-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-[60px]"></div>
-
-      <div class="relative z-10 space-y-3">
+    <!-- Player Telemetry Console -->
+    <section class="border border-zinc-800 bg-zinc-950 rounded-sm overflow-hidden shadow-2xl">
+      <!-- Top Status Strip -->
+      <div class="px-4 py-2 bg-zinc-900/80 border-b border-zinc-800 flex items-center justify-between text-[11px] font-mono">
         <div class="flex items-center gap-2">
-          <span class="px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-lg shadow-sm">
-            {{ playerProfile.role === 'ADMIN' ? '👑 Society Admin' : '⭐ Active Member' }}
+          <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+          <span class="text-orange-400 font-bold uppercase tracking-wider">
+            {{ playerProfile.role === 'ADMIN' ? 'ROLE // ADMIN' : 'ROLE // MEMBER' }}
           </span>
-          <span class="text-[11px] font-medium text-slate-400">@{{ playerProfile.username }}</span>
         </div>
-        <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">
-          Welcome back, <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">{{ playerProfile.name }}</span>
-        </h1>
-        <p class="text-[12px] text-slate-400 leading-relaxed">
-          Manage fixtures, inspect handicaps, and review your live digital scorecards.
-        </p>
+        <span class="text-zinc-400">@{{ playerProfile.username }}</span>
       </div>
 
-      <!-- Primary Actions -->
-      <div class="flex flex-col gap-2 pt-2 relative z-10">
-        <UButton
-          to="/scorecard"
-          color="success"
-          variant="solid"
-          size="sm"
-          icon="i-heroicons-pencil-square"
-          block
-          class="font-bold shadow-xl shadow-emerald-500/20 cursor-pointer"
-        >
-          Start Scorecard
-        </UButton>
-        <UButton
-          to="/members"
-          color="neutral"
-          variant="soft"
-          size="sm"
-          icon="i-heroicons-user-group"
-          block
-          class="font-semibold cursor-pointer"
-        >
-          Find Members
-        </UButton>
+      <!-- Profile Header & Actions -->
+      <div class="p-4 sm:p-5 space-y-4">
+        <div class="space-y-1">
+          <h1 class="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight">
+            Welcome back, <span class="text-orange-400">{{ playerProfile.name }}</span>
+          </h1>
+          <p class="text-xs text-zinc-400 leading-relaxed">
+            Manage society fixtures, verify WHS playing handicaps, and inspect digital scorecards.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+          <UButton
+            to="/scorecard"
+            size="sm"
+            icon="i-heroicons-pencil-square"
+            block
+            class="rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold tracking-tight transition-colors cursor-pointer"
+          >
+            Start Scorecard
+          </UButton>
+          <UButton
+            to="/members"
+            variant="outline"
+            size="sm"
+            icon="i-heroicons-user-group"
+            block
+            class="rounded-sm border-zinc-700 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-200 font-semibold transition-colors cursor-pointer"
+          >
+            Find Members
+          </UButton>
+        </div>
       </div>
 
-      <!-- Stats Grid (2 columns on mobile) -->
-      <div class="grid grid-cols-2 gap-3 pt-3 border-t border-slate-800/80 relative z-10">
-        <div class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-2xl space-y-1 shadow-inner group hover:border-emerald-500/40 transition-all">
-          <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">WHS Handicap</span>
-          <div class="text-xl sm:text-2xl font-black text-white">{{ playerProfile.handicapIndex }}</div>
+      <!-- Border-Collapsed Telemetry Matrix -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 border-t border-zinc-800 divide-x divide-y sm:divide-y-0 divide-zinc-800 bg-zinc-900/20 font-mono">
+        <div class="p-3.5 space-y-1">
+          <span class="text-[10px] uppercase tracking-wider text-zinc-500 block">WHS Index</span>
+          <div class="text-xl font-bold text-zinc-100">{{ playerProfile.handicapIndex }}</div>
         </div>
-        <div class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-2xl space-y-1 shadow-inner group hover:border-emerald-500/40 transition-all">
-          <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Rounds Played</span>
-          <div class="text-xl sm:text-2xl font-black text-emerald-400">{{ userScorecards.length }}</div>
+        <div class="p-3.5 space-y-1">
+          <span class="text-[10px] uppercase tracking-wider text-zinc-500 block">Playing HCP</span>
+          <div class="text-xl font-bold text-orange-400">{{ playerProfile.playingHandicap }}</div>
         </div>
-        <div class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-2xl space-y-1 shadow-inner group hover:border-emerald-500/40 transition-all">
-          <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Best Stableford</span>
-          <div class="text-xl sm:text-2xl font-black text-amber-400">{{ bestScore }} <span class="text-[10px] text-amber-500 font-bold block">pts</span></div>
+        <div class="p-3.5 space-y-1">
+          <span class="text-[10px] uppercase tracking-wider text-zinc-500 block">Rounds Logged</span>
+          <div class="text-xl font-bold text-zinc-100">{{ userScorecards.length }}</div>
         </div>
-        <div class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-2xl space-y-1 shadow-inner group hover:border-emerald-500/40 transition-all">
-          <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Playing HCP</span>
-          <div class="text-xl sm:text-2xl font-black text-emerald-400">{{ playerProfile.playingHandicap }}</div>
+        <div class="p-3.5 space-y-1">
+          <span class="text-[10px] uppercase tracking-wider text-zinc-500 block">Best Stableford</span>
+          <div class="text-xl font-bold text-emerald-400">
+            {{ bestScore }} <span class="text-[10px] text-zinc-500 font-normal">PTS</span>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- Society Fixtures -->
-    <div class="space-y-3">
-      <div class="flex items-center justify-between">
-        <h2 class="text-sm font-bold text-white flex items-center gap-2">
-          <div class="w-5 h-5 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-            <UIcon name="i-heroicons-trophy" class="w-3 h-3" />
-          </div>
-          <span>Society Fixtures</span>
-        </h2>
-        <span class="text-[10px] text-emerald-400 font-bold px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-          {{ upcomingCompetitions.length }} Active
+    <section class="space-y-3">
+      <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+        <div class="flex items-center gap-2">
+          <UIcon name="i-heroicons-trophy" class="w-4 h-4 text-orange-400" />
+          <h2 class="text-xs font-mono font-bold uppercase tracking-wider text-zinc-200">Society Fixtures</h2>
+        </div>
+        <span class="text-[10px] font-mono text-orange-400 bg-orange-500/10 border border-orange-500/30 px-2 py-0.5 rounded-sm">
+          {{ upcomingCompetitions.length }} ACTIVE
         </span>
       </div>
 
-      <div v-if="upcomingCompetitions.length === 0" class="bg-slate-900/60 border border-slate-800/80 p-4 rounded-2xl text-center space-y-2">
-        <UIcon name="i-heroicons-calendar" class="w-8 h-8 text-slate-600 mx-auto" />
-        <h3 class="text-sm font-bold text-white">No Open Competitions</h3>
-        <p class="text-[11px] text-slate-400 max-w-xs mx-auto">No active fixtures scheduled. Check back for the next tee time.</p>
+      <div v-if="upcomingCompetitions.length === 0" class="border border-zinc-800 bg-zinc-950/60 p-6 rounded-sm text-center space-y-2">
+        <UIcon name="i-heroicons-calendar" class="w-6 h-6 text-zinc-600 mx-auto" />
+        <h3 class="text-xs font-mono font-bold uppercase text-zinc-300">No Open Competitions</h3>
+        <p class="text-xs text-zinc-500 max-w-xs mx-auto">No active fixtures scheduled. Check back for the next tee time.</p>
       </div>
 
-      <div v-else class="space-y-3">
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div
           v-for="comp in upcomingCompetitions"
           :key="comp.id"
-          class="bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 p-3.5 rounded-3xl backdrop-blur-xl shadow-xl transition-all duration-300 space-y-3 group"
+          class="group relative border border-zinc-800 bg-zinc-950 hover:border-zinc-700 p-4 rounded-sm transition-colors flex flex-col justify-between space-y-4"
         >
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-white text-sm group-hover:text-emerald-400 transition-colors">{{ comp.name }}</span>
-              <span :class="comp.status === 'OPEN' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'" class="px-2 py-0.5 border text-[9px] font-bold rounded-lg uppercase tracking-wider">
+          <div class="absolute top-0 left-0 w-full h-[2px] bg-orange-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+
+          <div class="space-y-2.5">
+            <div class="flex items-start justify-between gap-2">
+              <span class="font-bold text-zinc-100 text-sm group-hover:text-orange-400 transition-colors leading-snug">
+                {{ comp.name }}
+              </span>
+              <span
+                :class="comp.status === 'OPEN'
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  : 'bg-zinc-900 text-zinc-400 border-zinc-700'"
+                class="px-1.5 py-0.5 border text-[9px] font-mono font-bold rounded-sm uppercase tracking-wider shrink-0"
+              >
                 {{ comp.status }}
               </span>
             </div>
-            <div class="space-y-1.5 text-[11px] text-slate-400">
-              <div class="flex items-center gap-1.5">
-                <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+
+            <div class="space-y-1 text-xs font-mono text-zinc-400">
+              <div class="flex items-center gap-2">
+                <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 text-orange-400 shrink-0" />
                 <span>{{ formatUKDate(comp.date) }}</span>
               </div>
-              <div class="flex items-center gap-1.5">
-                <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                <span>{{ comp.venue }}</span>
+              <div class="flex items-center gap-2">
+                <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                <span class="truncate">{{ comp.venue }}</span>
               </div>
             </div>
           </div>
+
           <UButton
             :to="`/competitions/${comp.id}`"
-            color="success"
-            variant="solid"
-            size="sm"
+            size="xs"
             block
-            icon="i-heroicons-clipboard-document-check"
-            class="font-semibold shadow-lg shadow-emerald-500/20 cursor-pointer"
+            icon="i-heroicons-arrow-right-circle"
+            class="rounded-sm bg-zinc-900 hover:bg-[#F6821F] text-zinc-200 hover:text-zinc-950 border border-zinc-700 hover:border-[#F6821F] font-mono font-bold uppercase tracking-wider py-2 transition-colors cursor-pointer"
           >
             Enter Lobby
           </UButton>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- My Friends -->
-    <div class="space-y-3">
-      <div class="flex items-center justify-between">
-        <h2 class="text-sm font-bold text-white flex items-center gap-2">
-          <div class="w-5 h-5 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-            <UIcon name="i-heroicons-user-group" class="w-3 h-3" />
-          </div>
-          <span>My Friends</span>
-        </h2>
-        <NuxtLink to="/members" class="text-[10px] text-emerald-400 hover:underline font-bold">Find More →</NuxtLink>
+    <!-- My Recent Rounds -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+        <div class="flex items-center gap-2">
+          <UIcon name="i-heroicons-document-text" class="w-4 h-4 text-orange-400" />
+          <h2 class="text-xs font-mono font-bold uppercase tracking-wider text-zinc-200">Recent Scorecards</h2>
+        </div>
+        <NuxtLink :to="`/player/${playerProfile.id}`" class="text-[11px] font-mono text-orange-400 hover:underline">
+          ROUND_ARCHIVE →
+        </NuxtLink>
       </div>
 
-      <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-3xl backdrop-blur-xl shadow-xl space-y-3">
-        <div v-if="acceptedFriends.length === 0" class="text-center py-3 space-y-1">
-          <p class="text-[11px] text-slate-400">No friends added yet.</p>
-          <UButton to="/members" size="xs" color="success" variant="subtle">Search Members</UButton>
+      <div v-if="userScorecards.length === 0" class="border border-zinc-800 bg-zinc-950/60 p-6 rounded-sm text-center space-y-3">
+        <UIcon name="i-heroicons-document-minus" class="w-6 h-6 text-zinc-600 mx-auto" />
+        <div class="space-y-1">
+          <h3 class="text-xs font-mono font-bold uppercase text-zinc-300">No Rounds Recorded</h3>
+          <p class="text-xs text-zinc-500 max-w-xs mx-auto">Log a scorecard on the course to populate your career telemetry.</p>
+        </div>
+        <UButton
+          to="/scorecard"
+          size="xs"
+          icon="i-heroicons-plus"
+          class="rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-mono font-bold uppercase"
+        >
+          Play First Round
+        </UButton>
+      </div>
+
+      <div v-else class="border border-zinc-800 divide-y divide-zinc-800 bg-zinc-950 rounded-sm overflow-hidden">
+        <div
+          v-for="sc in userScorecards.slice(0, 4)"
+          :key="sc.id"
+          @click="openScorecardDetail(sc)"
+          class="p-3.5 hover:bg-zinc-900/60 transition-colors cursor-pointer group flex items-center justify-between gap-3"
+        >
+          <div class="min-w-0 space-y-1.5">
+            <div class="flex items-center gap-2">
+              <span
+                v-if="sc.isCompetition"
+                class="px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-mono font-bold rounded-sm uppercase"
+              >
+                COMPETITION
+              </span>
+              <span
+                v-else
+                class="px-1.5 py-0.5 bg-zinc-900 border border-zinc-700 text-zinc-400 text-[9px] font-mono font-bold rounded-sm uppercase"
+              >
+                GENERAL
+              </span>
+              <span class="text-[10px] font-mono text-zinc-500">{{ formatUKDateOnly(sc.playedAt) }}</span>
+            </div>
+
+            <div>
+              <h3 class="font-bold text-zinc-100 text-sm group-hover:text-orange-400 transition-colors truncate">
+                {{ sc.courseName }}
+              </h3>
+              <p v-if="sc.isCompetition && sc.competitionTitle" class="text-[11px] font-mono text-amber-400/90 truncate">
+                {{ sc.competitionTitle }}
+              </p>
+              <p class="text-[11px] text-zinc-500 truncate">{{ sc.courseLocation }}</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 shrink-0">
+            <div class="text-right bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-sm font-mono">
+              <span class="text-base font-bold text-orange-400 block leading-none">{{ sc.stablefordPoints }}</span>
+              <span class="text-[9px] uppercase text-zinc-500 block mt-0.5">PTS</span>
+            </div>
+            <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-zinc-600 group-hover:text-orange-400 transition-colors" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- My Friends -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
+        <div class="flex items-center gap-2">
+          <UIcon name="i-heroicons-user-group" class="w-4 h-4 text-orange-400" />
+          <h2 class="text-xs font-mono font-bold uppercase tracking-wider text-zinc-200">Society Connections</h2>
+        </div>
+        <NuxtLink to="/members" class="text-[11px] font-mono text-orange-400 hover:underline">
+          DIRECTORY →
+        </NuxtLink>
+      </div>
+
+      <div class="border border-zinc-800 bg-zinc-950 rounded-sm overflow-hidden">
+        <div v-if="acceptedFriends.length === 0" class="p-5 text-center space-y-2">
+          <p class="text-xs font-mono text-zinc-500">NO_CONNECTIONS_FOUND</p>
+          <UButton
+            to="/members"
+            size="xs"
+            variant="outline"
+            class="rounded-sm border-zinc-700 text-zinc-300 hover:bg-zinc-900 font-mono text-[11px]"
+          >
+            Search Members
+          </UButton>
         </div>
 
-        <div v-else class="space-y-2">
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-zinc-800">
           <NuxtLink
             v-for="friend in acceptedFriends"
             :key="friend.friendId"
             :to="`/player/${friend.friendId}`"
-            class="flex items-center justify-between p-2.5 bg-slate-950/70 border border-slate-800/80 hover:border-emerald-500/40 rounded-2xl transition-all group"
+            class="flex items-center justify-between p-3 hover:bg-zinc-900/60 transition-colors group"
           >
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-7 h-7 rounded-sm bg-zinc-900 border border-zinc-700 text-orange-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">
                 {{ friend.name.charAt(0).toUpperCase() }}
               </div>
               <div class="leading-tight min-w-0">
-                <span class="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors block truncate">{{ friend.name }}</span>
-                <span class="text-[9px] text-slate-400 truncate">@{{ friend.username }}</span>
+                <span class="text-xs font-semibold text-zinc-100 group-hover:text-orange-400 transition-colors block truncate">
+                  {{ friend.name }}
+                </span>
+                <span class="text-[10px] font-mono text-zinc-500 block truncate">@{{ friend.username }}</span>
               </div>
             </div>
-            <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg">
+            <span class="text-[10px] font-mono font-semibold text-orange-400 bg-orange-500/10 border border-orange-500/30 px-2 py-0.5 rounded-sm shrink-0">
               HCP {{ friend.handicapIndex }}
             </span>
           </NuxtLink>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- My Recent Rounds -->
-    <div class="space-y-3">
-      <div class="flex items-center justify-between">
-        <h2 class="text-sm font-bold text-white flex items-center gap-2">
-          <div class="w-5 h-5 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-            <UIcon name="i-heroicons-document-text" class="w-3 h-3" />
-          </div>
-          <span>My Recent Rounds</span>
-        </h2>
-        <NuxtLink :to="`/player/${playerProfile.id}`" class="text-[10px] text-emerald-400 hover:underline font-bold">Full Profile →</NuxtLink>
-      </div>
-
-      <div v-if="userScorecards.length === 0" class="bg-slate-900/60 border border-slate-800/80 p-4 rounded-2xl text-center space-y-2">
-        <UIcon name="i-heroicons-document-minus" class="w-8 h-8 text-slate-600 mx-auto" />
-        <h3 class="text-sm font-bold text-white">No Rounds Recorded</h3>
-        <p class="text-[11px] text-slate-400 max-w-xs mx-auto">Play a round and save your scorecard to build your career history.</p>
-        <div class="pt-1">
-          <UButton to="/scorecard" color="success" size="sm" icon="i-heroicons-plus" block>Play First Round</UButton>
-        </div>
-      </div>
-
-      <div v-else class="space-y-3">
-        <div
-          v-for="sc in userScorecards.slice(0, 4)"
-          :key="sc.id"
-          @click="openScorecardDetail(sc)"
-          class="bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 p-3.5 rounded-3xl backdrop-blur-xl shadow-xl space-y-3 cursor-pointer transition-all hover:scale-[1.02] group"
-        >
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <span
-                v-if="sc.isCompetition"
-                class="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-bold rounded-lg flex items-center gap-1"
-              >
-                <UIcon name="i-heroicons-trophy" class="w-3 h-3 text-amber-400" />
-                Competition Round
-              </span>
-              <span v-else class="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[9px] font-bold rounded-lg flex items-center gap-1">
-                <UIcon name="i-heroicons-flag" class="w-3 h-3 text-emerald-400" />
-                Normal Round
-              </span>
-              <span class="text-[9px] text-slate-500 font-medium">{{ formatUKDateOnly(sc.playedAt) }}</span>
-            </div>
-            <div class="flex items-start justify-between gap-2 mt-0.5">
-              <div class="min-w-0">
-                <h3 class="font-bold text-white text-sm leading-tight group-hover:text-emerald-400 transition-colors truncate">{{ sc.courseName }}</h3>
-                <p v-if="sc.isCompetition && sc.competitionTitle" class="text-[10px] text-amber-400/90 font-semibold truncate mt-0.5">🏆 {{ sc.competitionTitle }}</p>
-                <p class="text-[11px] text-slate-400 mt-0.5">📍 {{ sc.courseLocation }}</p>
-              </div>
-              <div class="text-right shrink-0 bg-slate-950/80 px-2.5 py-1 rounded-2xl border border-slate-800/80 shadow-inner">
-                <span class="text-lg font-black text-emerald-400 block">{{ sc.stablefordPoints }}</span>
-                <span class="text-[9px] uppercase font-bold text-slate-400 block">pts</span>
-              </div>
-            </div>
-          </div>
-          <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
-            <span class="text-emerald-400 font-bold group-hover:underline flex items-center gap-1">View Hole-by-Hole →</span>
-            <UIcon name="i-heroicons-chevron-right" class="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-transform" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- HOLE-BY-HOLE SCORECARD BREAKDOWN MODAL (bottom sheet) -->
+    <!-- HOLE-BY-HOLE SCORECARD BREAKDOWN MODAL -->
     <Teleport to="body">
       <Transition name="modal">
         <div
           v-if="showDetailModal && selectedScorecard"
-          class="fixed inset-0 z-[999] flex items-end justify-center p-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-950/90 backdrop-blur-md overflow-hidden sm:items-center sm:p-4 sm:pb-0"
+          class="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-sm"
           @click.self="showDetailModal = false"
         >
-          <div class="bg-slate-900 border border-slate-800 w-full rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col max-h-[88vh] relative">
-            <!-- Drag handle -->
-            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-3 sm:hidden"></div>
-
+          <div class="bg-zinc-950 border-t sm:border border-zinc-800 w-full sm:max-w-lg rounded-t-md sm:rounded-sm shadow-2xl flex flex-col max-h-[88vh] overflow-hidden">
+            
             <!-- Modal Header -->
-            <div class="flex items-start justify-between border-b border-slate-800 pb-3 shrink-0">
+            <div class="flex items-start justify-between px-4 py-3 bg-zinc-900/80 border-b border-zinc-800 shrink-0">
               <div>
-                <h2 class="text-sm sm:text-base font-black text-white">{{ selectedScorecard.courseName }}</h2>
-                <p class="text-[10px] sm:text-xs text-slate-400">📍 {{ selectedScorecard.courseLocation }} • {{ formatUKDateOnly(selectedScorecard.playedAt) }}</p>
+                <div class="text-[10px] font-mono text-orange-400 uppercase tracking-wider">SCORECARD_TELEMETRY</div>
+                <h2 class="text-sm sm:text-base font-bold text-zinc-100 mt-0.5">{{ selectedScorecard.courseName }}</h2>
+                <p class="text-[11px] font-mono text-zinc-400">
+                  {{ selectedScorecard.courseLocation }} • {{ formatUKDateOnly(selectedScorecard.playedAt) }}
+                </p>
               </div>
-              <button @click="showDetailModal = false" class="text-slate-400 hover:text-white text-xs font-bold p-1.5 bg-slate-800/60 rounded-full cursor-pointer leading-none">✕</button>
+              <button
+                @click="showDetailModal = false"
+                class="w-7 h-7 flex items-center justify-center rounded-sm border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-600 font-mono text-xs cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
             <!-- Scrollable Content -->
-            <div class="overflow-y-auto py-2 sm:py-4 space-y-3 flex-1 pr-1">
-              <!-- Total Score Summary -->
-              <div class="grid grid-cols-2 gap-2 text-center">
-                <div class="bg-slate-950/80 p-2 sm:p-3 rounded-2xl border border-slate-800 shadow-inner">
-                  <span class="text-[9px] uppercase font-bold text-slate-400 block">Total Strokes</span>
-                  <span class="text-lg sm:text-xl font-black text-white">
+            <div class="overflow-y-auto p-4 space-y-4 flex-1">
+              
+              <!-- Total Score Summary Matrix -->
+              <div class="grid grid-cols-2 border border-zinc-800 divide-x divide-zinc-800 bg-zinc-900/30 text-center font-mono">
+                <div class="p-3">
+                  <span class="text-[10px] uppercase text-zinc-500 block">Total Strokes</span>
+                  <span class="text-xl font-bold text-zinc-100">
                     {{ selectedScorecard.parsedHoles.reduce((a: number, b: number) => a + (b || 0), 0) }}
                   </span>
                 </div>
-                <div class="bg-slate-950/80 p-2 sm:p-3 rounded-2xl border border-slate-800 shadow-inner">
-                  <span class="text-[9px] uppercase font-bold text-slate-400 block">Stableford Points</span>
-                  <span class="text-lg sm:text-xl font-black text-emerald-400">{{ selectedScorecard.stablefordPoints }} pts</span>
+                <div class="p-3">
+                  <span class="text-[10px] uppercase text-zinc-500 block">Stableford Points</span>
+                  <span class="text-xl font-bold text-orange-400">{{ selectedScorecard.stablefordPoints }} PTS</span>
                 </div>
               </div>
 
-              <!-- Hole Pagination -->
-              <div class="space-y-2">
-                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+              <!-- Hole Pagination Controls -->
+              <div class="space-y-2.5">
+                <div class="flex items-center justify-between border-b border-zinc-800 pb-2">
                   <div>
-                    <span class="text-[9px] font-bold uppercase tracking-wider text-emerald-400 block">Hole-by-Hole Breakdown</span>
-                    <p class="text-[10px] text-slate-400">
-                      Holes 1–{{ Math.min(9, selectedScorecard.parsedHoles.length) }} of {{ selectedScorecard.parsedHoles.length }}
+                    <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-300 block">
+                      Hole-by-Hole Log
+                    </span>
+                    <p class="text-[10px] font-mono text-zinc-500">
+                      {{ holePage === 1 ? 'HOLES 01–09 (OUT)' : 'HOLES 10–18 (IN)' }}
                     </p>
                   </div>
-                  <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+
+                  <div v-if="selectedScorecard.parsedHoles.length > 9" class="flex border border-zinc-800 rounded-sm overflow-hidden font-mono">
                     <button
-                      v-for="page in [1, 2]"
-                      :key="page"
                       type="button"
-                      class="px-2 py-1 rounded-lg text-[9px] transition-all duration-200 cursor-pointer"
-                      :class="[
-                        page === 1 ? 'bg-emerald-600 text-white font-black shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                      ]"
+                      @click="holePage = 1"
+                      class="px-2.5 py-1 text-[10px] uppercase transition-colors cursor-pointer"
+                      :class="holePage === 1 ? 'bg-[#F6821F] text-zinc-950 font-bold' : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200'"
                     >
-                      {{ page === 1 ? 'Out (1–9)' : 'In (10–18)' }}
+                      Out (1–9)
+                    </button>
+                    <button
+                      type="button"
+                      @click="holePage = 2"
+                      class="px-2.5 py-1 text-[10px] uppercase border-l border-zinc-800 transition-colors cursor-pointer"
+                      :class="holePage === 2 ? 'bg-[#F6821F] text-zinc-950 font-bold' : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200'"
+                    >
+                      In (10–18)
                     </button>
                   </div>
                 </div>
 
-                <!-- 2-Column Hole Grid -->
-                <div class="grid grid-cols-2 gap-2">
+                <!-- 3-Column Hole Matrix -->
+                <div class="grid grid-cols-3 gap-2 font-mono">
                   <div
-                    v-for="(strokes, idx) in selectedScorecard.parsedHoles.slice(0, 9)"
+                    v-for="(strokes, idx) in displayedHoles"
                     :key="idx"
-                    class="p-2 bg-slate-950/90 border border-slate-800 rounded-2xl flex flex-col justify-between space-y-1 shadow-sm"
+                    class="p-2.5 bg-zinc-900/50 border border-zinc-800 rounded-sm flex flex-col justify-between space-y-1.5"
                   >
                     <div class="flex items-center justify-between text-[10px]">
-                      <span class="font-black text-slate-300">Hole {{ idx + 1 }}</span>
-                      <span class="font-semibold text-slate-500 text-[9px] uppercase">
-                        Par {{ 4 }} • SI {{ idx + 1 }}
+                      <span class="font-bold text-zinc-300">
+                        H{{ String((holePage === 1 ? 0 : 9) + idx + 1).padStart(2, '0') }}
                       </span>
+                      <span class="text-zinc-500 text-[9px]">P4</span>
                     </div>
-                    <div class="flex items-center justify-between pt-1 border-t border-slate-900">
-                      <span class="text-[9px] font-bold uppercase px-1 py-0.5 rounded bg-slate-800 text-slate-300">
-                        {{ strokes ? (strokes <= 4 ? 'Birdie' : strokes === 4 ? 'Par' : 'Bogey') : '-' }}
+
+                    <div class="flex items-center justify-between pt-1 border-t border-zinc-800/80">
+                      <span
+                        class="text-[9px] uppercase px-1 py-0.5 rounded-sm"
+                        :class="!strokes
+                          ? 'text-zinc-600'
+                          : strokes <= 3
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                            : strokes === 4
+                              ? 'bg-zinc-800 text-zinc-300'
+                              : 'bg-orange-500/10 text-orange-400 border border-orange-500/30'"
+                      >
+                        {{ strokes ? (strokes <= 3 ? 'Birdie' : strokes === 4 ? 'Par' : 'Bogey+') : '—' }}
                       </span>
-                      <span class="text-sm font-black text-white bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-lg shadow-inner">
+                      <span class="text-sm font-bold text-zinc-100">
                         {{ strokes ?? '-' }}
                       </span>
                     </div>
@@ -410,8 +475,14 @@ watch(showDetailModal, (isOpen) => {
             </div>
 
             <!-- Fixed Footer -->
-            <div class="pt-3 border-t border-slate-800 shrink-0">
-              <UButton @click="showDetailModal = false" color="neutral" variant="ghost" block size="md" class="font-semibold cursor-pointer text-slate-400">
+            <div class="p-3 bg-zinc-900/60 border-t border-zinc-800 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <UButton
+                @click="showDetailModal = false"
+                variant="outline"
+                block
+                size="sm"
+                class="rounded-sm border-zinc-700 text-zinc-300 hover:bg-zinc-800 font-mono text-xs uppercase cursor-pointer"
+              >
                 Close Breakdown
               </UButton>
             </div>
@@ -425,11 +496,11 @@ watch(showDetailModal, (isOpen) => {
 <style scoped>
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
-  transform: scale(0.95);
+  transform: scale(0.98);
 }
 </style>

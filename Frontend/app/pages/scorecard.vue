@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { calculatePlayingHandicap, calculateHoleStableford, calculateFullScorecard, calculateEarlybirdsHandicapCut } from '../../server/utils/handicap'
 
@@ -162,7 +162,6 @@ const totalStablefordPoints = computed(() => fullScorecardData.value.totalPoints
 const totalScore = computed(() => fullScorecardData.value.totalStrokes)
 const totalPar = computed(() => course.value?.pars.reduce((a: number, b: number) => a + b, 0) || 72)
 const scoreDiff = computed(() => totalScore.value - totalPar.value)
-const holesPlayed = computed(() => holeScores.value.filter(s => s !== null).length)
 
 const submitScorecard = async () => {
   errorMessage.value = ''
@@ -178,13 +177,11 @@ const submitScorecard = async () => {
       }
     })
     if (res?.success) {
-      // Calculate new handicap based on the round just played
       const currentHcp = Number(currentUser.value?.handicapIndex || 0)
       const points = totalStablefordPoints.value
       const cut = calculateEarlybirdsHandicapCut(currentHcp, points, 'other')
       const newHandicapIndex = cut.newHandicapIndex
 
-      // Update the player's handicap index on the server
       try {
         if (currentUser.value?.id) {
           await $fetch(`/api/players/${currentUser.value.id}`, {
@@ -239,252 +236,277 @@ watch(
 </script>
 
 <template>
-  <div class="px-3 py-4 space-y-4 pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]">
+  <div class="max-w-3xl mx-auto px-4 py-6 space-y-6 pb-[max(8rem,env(safe-area-inset-bottom)+4rem)]">
 
-    <!-- Loading -->
-    <div v-if="loading" class="flex flex-col items-center justify-center py-20 text-xs text-slate-500">
-      <div class="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mb-3"></div>
-      <span>Loading scorecard...</span>
+    <!-- Loading State -->
+    <div v-if="loading" class="flex flex-col items-center justify-center py-20 font-mono text-xs text-zinc-500 space-y-3">
+      <div class="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin"></div>
+      <span>INITIALIZING_SCORECARD...</span>
     </div>
 
     <template v-else-if="course">
 
-      <!-- Top Bar: Course + Player + Live Points -->
-      <div class="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/80 p-3 shadow-2xl backdrop-blur-xl">
-        <div class="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500/10 blur-[40px]"></div>
+      <!-- Course & Player Telemetry Top Bar -->
+      <section class="border border-zinc-800 bg-zinc-950 rounded-sm overflow-hidden shadow-2xl font-mono">
+        <div class="px-4 py-2 bg-zinc-900/80 border-b border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+            <span class="text-zinc-200 font-bold uppercase tracking-wider">LIVE_SCORECARD_ENGINE</span>
+          </div>
+          <span class="text-orange-400">{{ course.numHoles }}H • PAR {{ totalPar }}</span>
+        </div>
 
-        <div class="relative z-10 flex flex-col gap-3">
-          <!-- Course -->
-          <div class="flex items-center gap-2.5">
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 shadow-inner">
-              <UIcon name="i-heroicons-flag" class="h-5 w-5" />
-            </div>
-            <div class="min-w-0">
-              <h1 class="truncate text-sm font-black tracking-tight text-white">{{ course.name }}</h1>
-              <div class="flex items-center gap-1.5 mt-0.5">
-                <UBadge color="neutral" variant="subtle" size="xs" class="font-bold uppercase tracking-wider">
-                  {{ course.numHoles }}H
-                </UBadge>
-                <span class="text-[10px] text-slate-500">• {{ totalPar }} Par</span>
-              </div>
-              <p class="mt-0.5 flex items-center gap-1 text-[10px] text-slate-400">
-                <UIcon name="i-heroicons-map-pin" class="h-3 w-3 text-slate-500" />
-                <span class="truncate">{{ course.location }}</span>
-              </p>
-            </div>
+        <div class="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="space-y-1 min-w-0">
+            <div class="text-[10px] text-orange-400 uppercase tracking-widest">// VENUE</div>
+            <h1 class="text-lg sm:text-xl font-bold text-zinc-100 font-sans truncate">{{ course.name }}</h1>
+            <p class="text-xs text-zinc-400 font-sans flex items-center gap-1.5">
+              <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+              <span>{{ course.location }}</span>
+            </p>
           </div>
 
-          <!-- Player Chip + Live Points -->
-          <div class="flex items-center justify-between gap-2 border-t border-slate-800/60 pt-3">
-            <div class="flex items-center gap-2 rounded-2xl border border-slate-800/90 bg-slate-950/70 p-1.5 shadow-sm backdrop-blur-md">
-              <div class="flex h-8 w-8 items-center justify-center rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/20 to-teal-500/10 font-black text-[10px] text-emerald-300 shadow-sm uppercase">
-                {{ currentUser?.name ? currentUser.name.charAt(0) : 'P' }}
-              </div>
-              <div class="min-w-0">
-                <span class="block truncate text-xs font-bold text-white leading-tight">{{ currentUser?.name || 'Player' }}</span>
-                <span class="mt-0.5 block text-[9px] font-semibold tracking-wide text-slate-400">
-                  PLAYING HCP: <strong class="font-bold text-emerald-400">{{ playingHandicap }}</strong>
-                </span>
-                <span class="mt-0.5 block text-[9px] font-bold uppercase tracking-wider" :class="handicapBand.color">{{ handicapBand.label }}</span>
+          <!-- Live Score Summary Badge -->
+          <div class="border border-orange-500/30 bg-orange-500/10 px-4 py-2.5 rounded-sm flex items-center gap-4 shrink-0">
+            <div>
+              <div class="text-[9px] uppercase tracking-wider text-zinc-400">Stableford Total</div>
+              <div class="text-xl font-bold text-orange-400 leading-none mt-0.5">
+                {{ totalStablefordPoints }} <span class="text-xs font-normal text-zinc-400">PTS</span>
               </div>
             </div>
-
-            <div class="flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-950/30 px-2.5 py-1.5 shadow-inner">
-              <div class="text-right">
-                <span class="block text-sm font-black uppercase tracking-widest text-emerald-400/80">Stableford</span>
-                <span class="text-xl font-black tracking-tight text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.3)]">
-                  {{ totalStablefordPoints }} <span class="text-sm font-bold text-emerald-500/80 block">pts</span>
-                </span>
-              </div>
-              <div class="flex h-2 w-2 relative">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <div class="w-px h-8 bg-zinc-800"></div>
+            <div>
+              <div class="text-[9px] uppercase tracking-wider text-zinc-400">Playing HCP</div>
+              <div class="text-xl font-bold text-zinc-100 leading-none mt-0.5">
+                {{ playingHandicap }}
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- REVIEW SCORECARD SCREEN -->
-      <div v-if="isReviewing" class="bg-slate-900/90 border border-slate-800 p-4 rounded-3xl shadow-2xl space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h2 class="text-sm font-black text-white">Review Scorecard</h2>
-          <UBadge color="success" variant="subtle" size="xs">Ready to Submit</UBadge>
+      <section v-if="isReviewing" class="border border-zinc-800 bg-zinc-950 rounded-sm overflow-hidden shadow-2xl font-mono">
+        <div class="px-4 py-3 bg-zinc-900/80 border-b border-zinc-800 flex items-center justify-between">
+          <div class="text-xs font-bold uppercase tracking-wider text-zinc-200">Review Scorecard Telemetry</div>
+          <span class="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-sm">READY_TO_SUBMIT</span>
         </div>
 
-        <div v-if="successMessage" class="p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] rounded-xl font-semibold text-center">
-          {{ successMessage }}
-        </div>
-        <div v-if="errorMessage" class="p-2.5 bg-red-500/10 border border-red-500/30 text-red-300 text-[11px] rounded-xl font-semibold text-center">
-          {{ errorMessage }}
-        </div>
+        <div class="p-5 space-y-5">
+          <div v-if="successMessage" class="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs rounded-sm">
+            ✓ {{ successMessage }}
+          </div>
+          <div v-if="errorMessage" class="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-sm">
+            ! {{ errorMessage }}
+          </div>
 
-        <!-- Summary Stats -->
-        <div class="grid grid-cols-3 gap-2 text-center">
-          <div class="bg-slate-950/80 p-2 rounded-2xl border border-slate-800">
-            <span class="text-[9px] uppercase font-bold text-slate-400 block">Total Strokes</span>
-            <span class="text-lg font-black text-white">{{ totalScore }}</span>
-          </div>
-          <div class="bg-slate-950/80 p-2 rounded-2xl border border-slate-800">
-            <span class="text-[9px] uppercase font-bold text-slate-400 block">Vs Par</span>
-            <span class="text-lg font-black" :class="scoreDiff > 0 ? 'text-amber-400' : 'text-emerald-400'">
-              {{ scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff === 0 ? 'E' : scoreDiff }}
-            </span>
-          </div>
-          <div class="bg-slate-950/80 p-2 rounded-2xl border border-slate-800">
-            <span class="text-sm uppercase font-bold text-slate-400 block">Stableford</span>
-            <span class="text-xl font-black text-emerald-400">{{ totalStablefordPoints }}</span>
-          </div>
-        </div>
-
-        <!-- Hole-by-Hole Review List -->
-        <div class="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-          <div
-            v-for="(h, idx) in fullScorecardData.holes"
-            :key="idx"
-            class="flex items-center justify-between p-2 bg-slate-950/60 border border-slate-800/80 rounded-xl text-xs"
-          >
-            <span class="font-bold text-slate-300">
-              Hole {{ h.holeNumber }}
-              <span class="text-[10px] text-slate-500">(Par {{ h.par }}, SI {{ h.si }})</span>
-            </span>
-            <div class="flex items-center gap-2">
-              <span class="font-bold text-emerald-400">+{{ h.points }} pts</span>
-              <span class="font-black text-white bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800">{{ h.strokes ?? '-' }}</span>
-              <button
-                @click="{ currentHoleIndex = idx; isReviewing = false; }"
-                class="text-[10px] text-emerald-400 hover:underline font-bold"
-              >
-                Edit
-              </button>
+          <!-- Summary Matrix -->
+          <div class="grid grid-cols-3 border border-zinc-800 divide-x divide-zinc-800 bg-zinc-900/30 text-center">
+            <div class="p-3.5">
+              <span class="text-[10px] uppercase text-zinc-500 block">Total Strokes</span>
+              <span class="text-xl font-bold text-zinc-100">{{ totalScore }}</span>
+            </div>
+            <div class="p-3.5">
+              <span class="text-[10px] uppercase text-zinc-500 block">Vs Par</span>
+              <span class="text-xl font-bold" :class="scoreDiff > 0 ? 'text-orange-400' : 'text-emerald-400'">
+                {{ scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff === 0 ? 'E' : scoreDiff }}
+              </span>
+            </div>
+            <div class="p-3.5">
+              <span class="text-[10px] uppercase text-zinc-500 block">Stableford</span>
+              <span class="text-xl font-bold text-orange-400">{{ totalStablefordPoints }}</span>
             </div>
           </div>
+
+          <!-- Hole-by-Hole Review List -->
+          <div class="border border-zinc-800 divide-y divide-zinc-800 max-h-64 overflow-y-auto">
+            <div
+              v-for="(h, idx) in fullScorecardData.holes"
+              :key="idx"
+              class="p-2.5 flex items-center justify-between hover:bg-zinc-900/50 transition-colors text-xs"
+            >
+              <div class="flex items-center gap-3">
+                <span class="font-bold text-zinc-400">H{{ String(h.holeNumber).padStart(2, '0') }}</span>
+                <span class="text-zinc-500 text-[10px]">Par {{ h.par }} • SI {{ h.si }}</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <span class="text-orange-400 font-bold">+{{ h.points }} pts</span>
+                <span class="font-bold text-zinc-100 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-sm">
+                  {{ h.strokes ?? '—' }}
+                </span>
+                <button
+                  @click="currentHoleIndex = idx; isReviewing = false;"
+                  class="text-[10px] text-orange-400 hover:underline cursor-pointer"
+                >
+                  EDIT
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-3 pt-2 border-t border-zinc-800">
+            <UButton
+              @click="prevHole"
+              variant="outline"
+              block
+              size="sm"
+              class="rounded-sm border-zinc-700 text-zinc-300 hover:bg-zinc-900 font-mono text-xs uppercase cursor-pointer"
+            >
+              Back to Holes
+            </UButton>
+            <UButton
+              @click="submitScorecard"
+              :disabled="submitting"
+              block
+              size="sm"
+              class="rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold font-mono text-xs uppercase cursor-pointer shadow-[0_0_20px_rgba(246,130,31,0.2)]"
+            >
+              {{ submitting ? 'SAVING...' : 'CONFIRM & SUBMIT' }}
+            </UButton>
+          </div>
         </div>
+      </section>
 
-        <!-- Actions -->
-        <div class="flex gap-2 pt-2">
-          <UButton @click="prevHole" color="neutral" variant="soft" block size="sm" class="font-semibold cursor-pointer flex-1">
-            Back to Holes
-          </UButton>
-          <UButton @click="submitScorecard" :disabled="submitting" color="success" block size="sm" class="font-semibold shadow-lg shadow-emerald-500/20 cursor-pointer flex-1">
-            {{ submitting ? 'Saving...' : 'Confirm & Save' }}
-          </UButton>
-        </div>
-      </div>
-
-      <!-- FOCUSED HOLE CARD (main play screen) -->
-      <div v-else class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-4 rounded-3xl shadow-2xl space-y-4 relative overflow-hidden">
-
-        <!-- Hole Header -->
-        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div class="flex items-center gap-2">
-            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-black text-xl flex items-center justify-center">
+      <!-- FOCUSED HOLE CARD (Main Play Screen) -->
+      <section v-else class="border border-zinc-800 bg-zinc-950 rounded-sm overflow-hidden shadow-2xl font-mono">
+        
+        <!-- Hole Telemetry Header -->
+        <div class="px-4 py-3 bg-zinc-900/80 border-b border-zinc-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-sm bg-zinc-900 border border-zinc-700 text-orange-400 font-bold text-sm flex items-center justify-center">
               {{ currentHoleNumber }}
             </div>
             <div>
-              <span class="text-sm font-bold uppercase tracking-wider text-slate-400 block">Hole {{ currentHoleNumber }} of {{ course.numHoles }}</span>
-              <div class="flex items-center gap-1.5 mt-0.5">
-                <span class="text-sm text-slate-500 font-medium">SI: <strong class="text-slate-300">{{ currentSI }}</strong></span>
-                <span class="text-sm font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                  +{{ shotsReceived }} shots
-                </span>
-              </div>
-              <div class="flex items-center gap-1.5 mt-0.5">
-                <span class="text-xs font-bold uppercase tracking-wider" :class="handicapBand.color">{{ handicapBand.label }}</span>
+              <div class="text-[10px] text-zinc-500 uppercase tracking-wider">HOLE_LOG // {{ currentHoleNumber }} OF {{ course.numHoles }}</div>
+              <div class="text-xs font-semibold text-zinc-200">
+                Par <strong class="text-zinc-100">{{ currentPar }}</strong> • Stroke Index <strong class="text-zinc-100">{{ currentSI }}</strong>
               </div>
             </div>
           </div>
 
-          <div class="text-right bg-slate-950/80 border border-slate-800/80 px-4 py-2 rounded-xl">
-            <span class="text-sm uppercase font-bold text-emerald-400 block">Par</span>
-            <span class="text-2xl font-black text-white">{{ currentPar }}</span>
+          <div class="text-right">
+            <span class="text-[10px] text-orange-400 block uppercase">Shots Received</span>
+            <span class="text-sm font-bold text-zinc-100">+{{ shotsReceived }}</span>
           </div>
         </div>
 
-        <!-- Score Stepper -->
-        <div class="space-y-3 text-center">
-          <div class="flex items-center justify-between px-2">
-            <span class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Strokes Taken</span>
-            <span class="text-[10px] font-black text-emerald-400">
-              +{{ holePoints }} pts
-            </span>
-          </div>
-
-          <div class="flex items-center justify-center gap-6">
-            <button @click="currentScore--" class="w-16 h-16 rounded-2xl bg-slate-950 border border-slate-800 text-white text-3xl font-bold hover:border-emerald-500 transition-all cursor-pointer active:scale-95 flex items-center justify-center">−</button>
-            <div class="w-28 text-center">
-              <input v-model.number="currentScore" type="number" min="1" max="15" inputmode="numeric" class="w-full text-center bg-slate-950 border border-slate-800 rounded-2xl text-white text-6xl font-black py-2 focus:border-emerald-500 focus:outline-none" />
+        <div class="p-6 space-y-6 text-center">
+          
+          <!-- Score Stepper Controls -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between text-xs text-zinc-400 px-2">
+              <span class="uppercase tracking-wider">Strokes Taken</span>
+              <span class="text-orange-400 font-bold">+{{ holePoints }} PTS EARNED</span>
             </div>
-            <button @click="currentScore++" class="w-16 h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-3xl font-bold transition-all cursor-pointer active:scale-95 shadow-lg shadow-emerald-600/30 flex items-center justify-center">+</button>
+
+            <div class="flex items-center justify-center gap-4">
+              <button
+                @click="currentScore--"
+                class="w-14 h-14 rounded-sm bg-zinc-900 border border-zinc-700 text-zinc-200 text-2xl font-bold hover:border-orange-500 transition-colors cursor-pointer active:scale-95 flex items-center justify-center"
+              >
+                −
+              </button>
+              
+              <div class="w-28 text-center">
+                <input
+                  v-model.number="currentScore"
+                  type="number"
+                  min="1"
+                  max="15"
+                  inputmode="numeric"
+                  class="w-full text-center bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-4xl font-bold py-2 focus:outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <button
+                @click="currentScore++"
+                class="w-14 h-14 rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 text-2xl font-bold transition-colors cursor-pointer active:scale-95 flex items-center justify-center shadow-[0_0_15px_rgba(246,130,31,0.2)]"
+              >
+                +
+              </button>
+            </div>
+
+            <div class="text-xs text-zinc-500">
+              Running Total: <strong class="text-zinc-300">{{ fullScorecardData.holes[currentHoleIndex]?.runningTotal || 0 }} PTS</strong>
+            </div>
           </div>
 
-          <div class="text-sm font-medium text-slate-500">
-            Running Total: <strong class="text-slate-300">{{ fullScorecardData.holes[currentHoleIndex]?.runningTotal || 0 }} pts</strong>
+          <!-- Quick Score Presets -->
+          <div class="grid grid-cols-4 gap-2 pt-1">
+            <button
+              @click="setScoreRelativeToPar(-1)"
+              class="py-2.5 bg-zinc-900 border border-zinc-800 hover:border-emerald-500/50 rounded-sm text-xs font-bold text-emerald-400 cursor-pointer transition-colors"
+            >
+              Birdie ({{ currentPar - 1 }})
+            </button>
+            <button
+              @click="setScoreRelativeToPar(0)"
+              class="py-2.5 bg-zinc-900 border border-zinc-800 hover:border-orange-500/50 rounded-sm text-xs font-bold text-zinc-100 cursor-pointer transition-colors"
+            >
+              Par ({{ currentPar }})
+            </button>
+            <button
+              @click="setScoreRelativeToPar(1)"
+              class="py-2.5 bg-zinc-900 border border-zinc-800 hover:border-orange-500/50 rounded-sm text-xs font-bold text-orange-400 cursor-pointer transition-colors"
+            >
+              Bogey ({{ currentPar + 1 }})
+            </button>
+            <button
+              @click="setScoreRelativeToPar(2)"
+              class="py-2.5 bg-zinc-900 border border-zinc-800 hover:border-red-500/50 rounded-sm text-xs font-bold text-red-400 cursor-pointer transition-colors"
+            >
+              Dbl+ ({{ currentPar + 2 }}+)
+            </button>
           </div>
-        </div>
 
-        <!-- Quick Score Presets -->
-        <div class="grid grid-cols-4 gap-1 pt-1">
-          <button @click="setScoreRelativeToPar(-1)" class="py-2 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded-xl text-sm font-bold text-emerald-400 cursor-pointer">
-            Birdie
-          </button>
-          <button @click="setScoreRelativeToPar(0)" class="py-2 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded-xl text-sm font-bold text-white cursor-pointer">
-            Par
-          </button>
-          <button @click="setScoreRelativeToPar(1)" class="py-2 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded-xl text-sm font-bold text-amber-400 cursor-pointer">
-            Bogey
-          </button>
-          <button @click="setScoreRelativeToPar(2)" class="py-2 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 rounded-xl text-sm font-bold text-red-400 cursor-pointer">
-            Dbl+
-          </button>
-        </div>
+          <!-- Navigation Footer -->
+          <div class="flex gap-3 pt-4 border-t border-zinc-800">
+            <UButton
+              @click="prevHole"
+              :disabled="currentHoleIndex === 0"
+              variant="outline"
+              size="sm"
+              block
+              icon="i-heroicons-arrow-left"
+              class="rounded-sm border-zinc-700 text-zinc-300 hover:bg-zinc-900 font-mono text-xs uppercase cursor-pointer disabled:opacity-30"
+            >
+              Previous
+            </UButton>
+            <UButton
+              @click="nextHole"
+              size="sm"
+              block
+              icon="i-heroicons-arrow-right"
+              class="rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold font-mono text-xs uppercase cursor-pointer shadow-[0_0_20px_rgba(246,130,31,0.2)]"
+            >
+              {{ currentHoleIndex === course.numHoles - 1 ? 'Review Card' : 'Next Hole' }}
+            </UButton>
+          </div>
 
-        <!-- Navigation -->
-        <div class="flex gap-2 pt-3 border-t border-slate-800">
-          <UButton
-            @click="prevHole"
-            :disabled="currentHoleIndex === 0"
-            color="neutral"
-            variant="soft"
-            size="sm"
-            block
-            icon="i-heroicons-arrow-left"
-            class="font-bold cursor-pointer flex-1 disabled:opacity-30"
-          >
-            Previous
-          </UButton>
-          <UButton
-            @click="nextHole"
-            color="success"
-            size="sm"
-            block
-            icon="i-heroicons-arrow-right"
-            class="font-bold shadow-lg shadow-emerald-500/20 cursor-pointer flex-1"
-          >
-            {{ currentHoleIndex === course.numHoles - 1 ? 'Review Card' : 'Next Hole' }}
-          </UButton>
         </div>
-      </div>
+      </section>
 
-      <!-- Quick Jumper Grid -->
-      <div v-if="!isReviewing" class="bg-slate-900/80 border border-slate-800 p-3 rounded-2xl space-y-2">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block text-center">Jump to Hole</span>
-        <div class="flex flex-wrap gap-1 justify-center">
+      <!-- Quick Hole Jumper Grid -->
+      <section v-if="!isReviewing" class="border border-zinc-800 bg-zinc-950 p-4 rounded-sm space-y-2.5 font-mono">
+        <div class="text-[10px] uppercase tracking-wider text-zinc-400 text-center">// QUICK JUMP TO HOLE</div>
+        <div class="flex flex-wrap gap-1.5 justify-center">
           <button
             v-for="(_, idx) in Number(course.numHoles || 18)"
             :key="idx"
             @click="currentHoleIndex = idx"
             :class="[
-              currentHoleIndex === idx ? 'bg-emerald-600 text-white font-black scale-105 shadow-md shadow-emerald-600/30' :
-              holeScores[idx] !== null ? 'bg-slate-800 text-emerald-400 font-bold border border-emerald-500/30' :
-              'bg-slate-950 text-slate-400 font-semibold border border-slate-800'
+              currentHoleIndex === idx
+                ? 'bg-[#F6821F] text-zinc-950 font-bold'
+                : holeScores[idx] !== null
+                  ? 'bg-zinc-900 text-orange-400 border border-orange-500/30'
+                  : 'bg-zinc-950 text-zinc-500 border border-zinc-800'
             ]"
-            class="w-7 h-7 rounded-xl text-[10px] flex items-center justify-center transition-all cursor-pointer"
+            class="w-8 h-8 rounded-sm text-xs flex items-center justify-center transition-colors cursor-pointer"
           >
             {{ idx + 1 }}
           </button>
         </div>
-      </div>
+      </section>
 
     </template>
   </div>
