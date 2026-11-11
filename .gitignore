@@ -33,3 +33,5 @@ logs
 /Frontend/data/*.db-wal
 
 /Frontend/*.zip
+
+/Backend/node_modules/
