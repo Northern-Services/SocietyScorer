@@ -176,252 +176,265 @@ const handleReleaseScores = async () => {
 </script>
 
 <template>
-  <div class="px-3 py-4 space-y-4 pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]">
+  <div class="max-w-3xl mx-auto px-4 py-6 space-y-6 pb-[max(8rem,env(safe-area-inset-bottom)+4rem)]">
 
     <!-- Back Link -->
-    <NuxtLink to="/competitions" class="text-[11px] font-bold text-slate-400 hover:text-emerald-400 flex items-center gap-1 transition-colors">
-      ← Back to Competitions
+    <NuxtLink to="/competitions" class="text-xs font-mono text-zinc-400 hover:text-orange-400 flex items-center gap-1.5 transition-colors">
+      <span>← BACK TO DIRECTORY</span>
     </NuxtLink>
 
     <!-- Admin PDF Banner -->
-    <div v-if="showDownloadPdfBtn" class="relative bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-slate-900 border border-amber-500/30 p-3 rounded-2xl backdrop-blur-xl shadow-2xl flex flex-col items-center justify-between gap-3 overflow-hidden">
-      <div class="pointer-events-none absolute -right-6 -bottom-6 w-24 h-24 bg-amber-500/10 rounded-full blur-[40px]"></div>
-      <div class="flex items-center gap-2 text-center relative z-10">
-        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30 shadow-inner">
+    <div v-if="showDownloadPdfBtn" class="border border-amber-500/30 bg-amber-500/10 p-4 rounded-sm shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-mono">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-sm bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/40">
           <UIcon name="i-heroicons-document-arrow-down" class="w-4 h-4" />
         </div>
-        <div class="space-y-0.5">
-          <span class="text-sm font-extrabold text-white block">Official Results Ready!</span>
-          <p class="text-[10px] text-slate-300">All participants completed 18 holes. Export the PDF summary.</p>
+        <div>
+          <span class="text-xs font-bold text-amber-300 uppercase tracking-wider block">OFFICIAL RESULTS READY</span>
+          <p class="text-[11px] text-zinc-400 font-sans mt-0.5">All participants completed 18 holes. Export the certified PDF report.</p>
         </div>
       </div>
-      <UButton @click="downloadPdfReport" color="warning" size="sm" icon="i-heroicons-arrow-down-tray" :loading="downloading" class="font-bold whitespace-nowrap shadow-xl shadow-amber-500/20">
-        Download PDF Report
+      <UButton @click="downloadPdfReport" size="xs" :loading="downloading" class="rounded-sm bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold uppercase tracking-wider shrink-0 cursor-pointer">
+        DOWNLOAD PDF REPORT
       </UButton>
     </div>
 
-    <!-- Admin Controls -->
-    <div v-if="isAdmin" class="p-3 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl flex flex-wrap items-center justify-between gap-2 backdrop-blur-2xl">
-      <div class="flex items-center gap-2 text-[10px] font-bold text-slate-300 relative z-10">
-        <div class="w-6 h-6 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 shadow-inner">
-          <UIcon name="i-heroicons-shield-check" class="w-3 h-3" />
+    <!-- Admin Controls Console -->
+    <div v-if="isAdmin" class="border border-zinc-800 bg-zinc-950 p-3.5 rounded-sm shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono">
+      <div class="flex items-center gap-2 text-xs font-bold text-zinc-200">
+        <div class="w-6 h-6 rounded-sm bg-zinc-900 border border-zinc-700 text-orange-400 flex items-center justify-center shrink-0">
+          <UIcon name="i-heroicons-shield-check" class="w-3.5 h-3.5" />
         </div>
-        <span>Admin Controls</span>
+        <span>ADMIN_CONTROLS</span>
       </div>
-      <div class="flex items-center gap-1.5 relative z-10 flex-wrap">
-        <UButton v-if="competition?.status !== 'ACTIVE'" @click="updateCompetitionStatus('ACTIVE')" color="success" size="xs" :loading="updatingStatus" class="font-bold shadow-md shadow-emerald-500/20">
-          Start Competition
-        </UButton>
-        <UButton v-if="!isLeaderboardReleased" @click="handleReleaseScores" color="warning" size="xs" :loading="releasingScores" class="font-bold shadow-md shadow-amber-500/20">
-          Release Scores
-        </UButton>
-        <UButton v-if="competition?.status !== 'CLOSED'" @click="updateCompetitionStatus('CLOSED')" color="neutral" variant="soft" size="xs" :loading="updatingStatus" class="font-bold cursor-pointer text-slate-300 hover:text-white">
-          Close Competition
-        </UButton>
+      <div class="flex items-center gap-2 flex-wrap">
+        <button v-if="competition?.status !== 'ACTIVE'" @click="updateCompetitionStatus('ACTIVE')" class="px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 text-[10px] font-bold uppercase rounded-sm transition-colors cursor-pointer">
+          START_COMPETITION
+        </button>
+        <button v-if="!isLeaderboardReleased" @click="handleReleaseScores" class="px-2.5 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 text-[10px] font-bold uppercase rounded-sm transition-colors cursor-pointer">
+          RELEASE_SCORES
+        </button>
+        <button v-if="competition?.status !== 'CLOSED'" @click="updateCompetitionStatus('CLOSED')" class="px-2.5 py-1 bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white text-[10px] font-bold uppercase rounded-sm transition-colors cursor-pointer">
+          CLOSE_COMPETITION
+        </button>
       </div>
     </div>
 
-    <!-- Competition Hero -->
-    <div v-if="competition" class="relative bg-slate-900/90 border border-slate-800/90 p-3 rounded-3xl backdrop-blur-2xl shadow-2xl space-y-4 overflow-hidden">
-      <div class="pointer-events-none absolute -top-6 -right-6 w-32 h-32 bg-emerald-500/10 rounded-full blur-[40px]"></div>
-
-      <div class="relative z-10 space-y-2">
+    <!-- Competition Hero Console -->
+    <section v-if="competition" class="border border-zinc-800 bg-zinc-950 rounded-sm overflow-hidden shadow-2xl space-y-6">
+      <!-- Status Top Bar -->
+      <div class="px-4 py-2.5 bg-zinc-900/80 border-b border-zinc-800 flex items-center justify-between text-[11px] font-mono">
         <div class="flex items-center gap-2">
-          <h1 class="text-lg font-black text-white tracking-tight">{{ competition.name }}</h1>
-          <UBadge :color="isClosed ? 'neutral' : isLiveToday ? 'success' : 'warning'" variant="subtle" size="xs" class="font-bold uppercase tracking-wider px-2 py-0.5">
-            {{ isClosed ? '🔒 Finalized' : isLiveToday ? '🏆 Live Today' : '⏳ Lobby Open' }}
-          </UBadge>
+          <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+          <span class="text-zinc-200 font-bold uppercase tracking-wider">TOURNAMENT_LOBBY</span>
         </div>
-        <p class="text-[11px] text-slate-400 flex items-center gap-1">
-          <UIcon name="i-heroicons-calendar" class="w-3 h-3 text-emerald-400 shrink-0" />
-          <span>Scheduled {{ formatUKDate(competition.date) }} at <strong class="text-white">{{ competition.venue }}</strong></span>
-        </p>
+        <span
+          class="px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase border"
+          :class="isClosed ? 'bg-zinc-900 text-zinc-400 border-zinc-700' : isLiveToday ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-orange-500/10 text-orange-400 border-orange-500/30'"
+        >
+          {{ isClosed ? 'LOCKED // FINALIZED' : isLiveToday ? '● LIVE TODAY' : 'LOBBY OPEN' }}
+        </span>
       </div>
 
-      <!-- Prize Pool -->
-      <div v-if="competition.prize1st || competition.prize2nd || competition.prize3rd" class="bg-slate-950/90 border border-amber-500/30 p-2.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-inner relative z-10">
-        <div class="flex items-center gap-1 text-amber-400 font-black text-[10px] uppercase tracking-wider">
-          <div class="w-6 h-6 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-            <UIcon name="i-heroicons-trophy" class="w-3 h-3" />
-          </div>
-          <span>Prize Pool: £{{ (Number(competition.prize1st || 0) + Number(competition.prize2nd || 0) + Number(competition.prize3rd || 0)) }}</span>
+      <div class="p-4 sm:p-6 space-y-6">
+        <div class="space-y-1.5 font-sans">
+          <div class="text-[10px] font-mono text-orange-400 uppercase tracking-widest">// EVENT INFRASTRUCTURE</div>
+          <h1 class="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight">{{ competition.name }}</h1>
+          <p class="text-xs text-zinc-400 font-mono flex items-center gap-2 pt-1">
+            <UIcon name="i-heroicons-calendar" class="w-4 h-4 text-orange-400 shrink-0" />
+            <span>{{ formatUKDate(competition.date) }} @ <strong class="text-zinc-200">{{ competition.venue }}</strong></span>
+          </p>
         </div>
-      </div>
 
-      <!-- 2's Club Pot -->
-      <div v-if="competition.potAmount" class="bg-slate-950/90 border border-emerald-500/30 p-2.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-inner relative z-10">
-        <div class="flex items-center gap-1 text-emerald-400 font-black text-[10px] uppercase tracking-wider">
-          <div class="w-6 h-6 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-            <UIcon name="i-heroicons-golf-flag" class="w-3 h-3" />
-          </div>
-          <span>2's Club Pot: £{{ twosPot }}</span>
-        </div>
-        <div class="flex items-center gap-2 text-[10px] text-slate-400">
-          <span>{{ twosEntries.length }} member{{ twosEntries.length !== 1 ? 's' : '' }} in the pot</span>
-          <span v-if="twosEntries.length > 0" class="text-emerald-400 font-bold">Split: £{{ twosSplit }} each</span>
-        </div>
-        <div v-if="twosEntries.length > 0" class="mt-1.5 flex flex-wrap gap-1">
-          <span v-for="t in twosEntries" :key="t.id" class="px-2 py-0.5 bg-emerald-500/10 text-emerald-300 rounded-md text-[10px] font-semibold">
-            {{ t.playerName }} (H{{ t.holeNumber }})
-          </span>
-        </div>
-      </div>
-
-      <!-- Weather Forecast -->
-      <div v-if="weather" class="bg-slate-950/90 border border-blue-500/30 p-2.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-inner relative z-10">
-        <div class="flex items-center gap-2 text-blue-400 font-black text-[10px] uppercase tracking-wider">
-          <div class="w-6 h-6 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
-            <UIcon name="i-heroicons-cloud" class="w-3 h-3" />
-          </div>
-          <span>Weather Forecast</span>
-        </div>
-        <div class="flex items-center gap-4 text-[10px]">
-          <span class="text-slate-400">{{ weather.description }}</span>
-          <span class="text-blue-400 font-bold">{{ weather.temperature }}°C</span>
-          <span class="text-slate-400">High {{ weather.maxTemp }}° / Low {{ weather.minTemp }}°</span>
-          <span v-if="weather.precipProbability > 0" class="text-blue-400">🌧️ {{ weather.precipProbability }}% rain</span>
-          <span class="text-slate-400">💨 {{ weather.windspeed }} km/h</span>
-        </div>
-      </div>
-
-      <!-- Status / Action Banners -->
-      <div v-if="isClosed" class="bg-slate-950/90 border border-slate-800 p-3 rounded-2xl text-center space-y-1 shadow-inner relative z-10">
-        <span class="text-sm font-bold text-slate-200 block">Competition Closed</span>
-        <p class="text-[11px] text-slate-400">Official scoring is closed. Final standings below.</p>
-      </div>
-
-      <div v-else-if="!isLiveToday" class="bg-amber-500/10 border border-amber-500/30 p-3 rounded-2xl flex flex-col items-center justify-between gap-2 relative z-10 shadow-xl">
-        <div class="space-y-1 text-center">
-          <span class="text-sm font-extrabold text-amber-300 block">Competition Lobby Active</span>
-          <p class="text-[11px] text-slate-300">Scorecards unlock on competition day. Join the lobby below!</p>
-        </div>
-        <UButton v-if="!isJoined" @click="handleJoinLobby" color="warning" size="sm" :loading="joining" class="font-bold whitespace-nowrap shadow-lg shadow-amber-500/20 w-full">
-          Join Competition Lobby
-        </UButton>
-        <UBadge v-else color="success" variant="solid" size="sm" class="font-bold px-3 py-1">✓ You're in the Lobby</UBadge>
-      </div>
-
-      <div v-else class="bg-emerald-500/15 border border-emerald-500/30 p-3 rounded-2xl flex flex-col items-center justify-between gap-2 relative z-10 shadow-xl">
-        <div class="space-y-1 text-center">
-          <span class="text-sm font-extrabold text-emerald-300 block">Event is Live Today!</span>
-          <p class="text-[11px] text-slate-300">Scorecard submission is open. Enter your 18-hole scores.</p>
-        </div>
-        <UButton :to="`/scorecard?competitionId=${competition.id}`" color="success" size="sm" icon="i-heroicons-pencil-square" class="font-bold shadow-lg shadow-emerald-500/25 w-full cursor-pointer">
-          Start Official Scorecard
-        </UButton>
-      </div>
-
-      <!-- Leaderboard -->
-      <div class="space-y-3 pt-3 border-t border-slate-800/80 relative z-10">
-        <div class="flex items-center justify-between">
-          <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-            <div class="w-6 h-6 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
-              <UIcon name="i-heroicons-trophy" class="w-3 h-3" />
+        <!-- Telemetry Matrix: Prize Pool & 2's Club -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono">
+          <div v-if="competition.prize1st || competition.prize2nd || competition.prize3rd" class="border border-zinc-800 bg-zinc-900/40 p-3.5 rounded-sm space-y-1">
+            <div class="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+              <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 text-amber-400" />
+              <span>Prize Pool</span>
             </div>
-            <span>Leaderboard ({{ liveLeaderboard.length }})</span>
-          </h3>
-          <span v-if="isLeaderboardReleased" class="text-[9px] text-emerald-400 font-bold uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">Scores Released</span>
-          <span v-else class="text-[9px] text-amber-400 font-bold uppercase tracking-wider bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">Scores Hidden</span>
-        </div>
-
-        <div v-if="!isLeaderboardReleased && !isAdmin" class="p-3 text-center bg-slate-950/80 border border-slate-800/80 rounded-2xl space-y-2">
-          <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/20">
-            <UIcon name="i-heroicons-lock-closed" class="w-4 h-4" />
-          </div>
-          <h4 class="text-sm font-bold text-white">Leaderboard Hidden</h4>
-          <p class="text-[11px] text-slate-400 max-w-xs mx-auto">Scores are confidential until the admin releases them.</p>
-        </div>
-
-        <template v-else>
-          <div v-if="liveLeaderboard.length === 0" class="p-4 text-center bg-slate-950/80 border border-slate-800/80 rounded-2xl space-y-1">
-            <UIcon name="i-heroicons-document-minus" class="w-6 h-6 text-slate-600 mx-auto" />
-            <p class="text-[11px] text-slate-400">No scorecards submitted yet.</p>
-          </div>
-
-          <div v-else class="space-y-2">
-            <div
-              v-for="entry in liveLeaderboard"
-              :key="entry.scorecardId"
-              @click="viewPlayerCard(entry)"
-              class="flex items-center justify-between p-2.5 bg-slate-950/80 border border-slate-800/80 hover:border-emerald-500/50 rounded-2xl transition-all cursor-pointer group shadow-sm"
-            >
-              <div class="flex items-center gap-2">
-                <div :class="entry.rank === 1 ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-amber-500/20 shadow-sm' : entry.rank === 2 ? 'bg-slate-300/15 text-slate-200 border-slate-300/30' : entry.rank === 3 ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-slate-900 text-slate-400 border-slate-800'" class="w-6 h-6 rounded-xl border font-black text-[10px] flex items-center justify-center shrink-0">
-                  #{{ entry.rank }}
-                </div>
-                <div class="min-w-0">
-                  <span class="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors block truncate">{{ entry.playerName }}</span>
-                  <span class="text-[10px] text-slate-400 truncate">HCP Index: {{ entry.handicapIndex }}</span>
-                </div>
-              </div>
-              <div class="text-right flex items-center gap-2">
-                <div>
-                  <span class="text-sm font-black text-emerald-400 block">{{ entry.stablefordPoints }}</span>
-                  <span class="text-[9px] uppercase font-bold text-slate-400 block">pts</span>
-                </div>
-                <div class="w-5 h-5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 group-hover:text-emerald-400 group-hover:border-emerald-500/30 transition-all">
-                  <UIcon name="i-heroicons-chevron-right" class="w-3 h-3" />
-                </div>
-              </div>
+            <div class="text-lg font-bold text-amber-400">
+              £{{ (Number(competition.prize1st || 0) + Number(competition.prize2nd || 0) + Number(competition.prize3rd || 0)) }}
             </div>
           </div>
-        </template>
-      </div>
 
-      <!-- Lobby Participants -->
-      <div class="space-y-3 pt-3 border-t border-slate-800/80 relative z-10">
-        <h3 class="text-[11px] font-bold uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-          <div class="w-6 h-6 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-            <UIcon name="i-heroicons-user-group" class="w-3 h-3" />
+          <div v-if="competition.potAmount" class="border border-zinc-800 bg-zinc-900/40 p-3.5 rounded-sm space-y-1">
+            <div class="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+              <UIcon name="i-lucide-flag" class="w-3.5 h-3.5 text-orange-400" />
+              <span>2's Club Pot (£{{ twosPot }})</span>
+            </div>
+            <div class="text-xs text-zinc-300">
+              <span class="font-bold text-orange-400">{{ twosEntries.length }} Entrants</span>
+              <span v-if="twosEntries.length > 0" class="text-zinc-500"> (£{{ twosSplit }} split)</span>
+            </div>
           </div>
-          <span>Registered Players ({{ lobbyPlayers.length }})</span>
-        </h3>
-
-        <div v-if="lobbyPlayers.length === 0" class="p-3 text-center bg-slate-950/80 border border-slate-800/80 rounded-2xl text-[11px] text-slate-400">
-          No players have joined the lobby yet. Be the first!
         </div>
 
-        <div v-else class="space-y-2">
-          <div v-for="p in lobbyPlayers" :key="p.id" class="bg-slate-950/80 border border-slate-800/80 p-2 rounded-2xl flex items-center justify-between shadow-inner">
+        <!-- Weather Telemetry Strip -->
+        <div v-if="weather" class="border border-zinc-800 bg-zinc-900/40 p-3.5 rounded-sm font-mono text-xs space-y-1">
+          <div class="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+            <UIcon name="i-heroicons-cloud" class="w-3.5 h-3.5 text-sky-400" />
+            <span>Course Weather Telemetry</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-zinc-300 pt-0.5">
+            <span class="font-bold text-zinc-100">{{ weather.temperature }}°C</span>
+            <span class="text-zinc-400">{{ weather.description }}</span>
+            <span class="text-zinc-500">High {{ weather.maxTemp }}° / Low {{ weather.minTemp }}°</span>
+            <span v-if="weather.precipProbability > 0" class="text-sky-400">RAIN {{ weather.precipProbability }}%</span>
+            <span class="text-zinc-500">WIND {{ weather.windspeed }} km/h</span>
+          </div>
+        </div>
+
+        <!-- Action Banners -->
+        <div v-if="isClosed" class="border border-zinc-800 bg-zinc-900/50 p-4 rounded-sm text-center font-mono space-y-1">
+          <span class="text-xs font-bold text-zinc-200 uppercase">COMPETITION_FINALIZED</span>
+          <p class="text-[11px] text-zinc-500 font-sans">Official scoring is closed. Final standings are locked.</p>
+        </div>
+
+        <div v-else-if="!isLiveToday" class="border border-orange-500/30 bg-orange-500/10 p-4 rounded-sm space-y-3 font-mono">
+          <div class="space-y-1 text-center sm:text-left font-sans">
+            <span class="text-xs font-bold text-orange-400 uppercase tracking-wider block">Lobby Open</span>
+            <p class="text-xs text-zinc-300">Scorecard submission unlocks on event day. Secure your spot in the lobby.</p>
+          </div>
+          <UButton v-if="!isJoined" @click="handleJoinLobby" size="sm" :loading="joining" block class="rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold uppercase tracking-wider cursor-pointer">
+            JOIN COMPETITION LOBBY
+          </UButton>
+          <div v-else class="text-center py-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-sm">
+            ✓ CONFIRMED LOBBY PARTICIPANT
+          </div>
+        </div>
+
+        <div v-else class="border border-emerald-500/30 bg-emerald-500/10 p-4 rounded-sm space-y-3 font-mono">
+          <div class="space-y-1 text-center sm:text-left font-sans">
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider block">Tournament Live Today</span>
+            <p class="text-xs text-zinc-300">Match play is active. Initialize your live 18-hole digital scorecard.</p>
+          </div>
+          <UButton :to="`/scorecard?competitionId=${competition.id}`" size="sm" block icon="i-heroicons-pencil-square" class="rounded-sm bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold uppercase tracking-wider cursor-pointer">
+            START OFFICIAL SCORECARD
+          </UButton>
+        </div>
+
+        <!-- Leaderboard Section -->
+        <div class="space-y-3 pt-4 border-t border-zinc-800 font-mono">
+          <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0">
-                {{ p.name.charAt(0).toUpperCase() }}
-              </div>
-              <div class="leading-tight min-w-0">
-                <span class="text-xs font-bold text-white block">{{ p.name }}</span>
-                <span class="text-[10px] text-slate-400">HCP Index: {{ p.handicapIndex }}</span>
+              <UIcon name="i-heroicons-trophy" class="w-4 h-4 text-orange-400" />
+              <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-200">Live Leaderboard ({{ liveLeaderboard.length }})</h3>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded-sm border uppercase" :class="isLeaderboardReleased ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-orange-500/10 text-orange-400 border-orange-500/30'">
+              {{ isLeaderboardReleased ? 'SCORES_RELEASED' : 'SCORES_HIDDEN' }}
+            </span>
+          </div>
+
+          <div v-if="!isLeaderboardReleased && !isAdmin" class="border border-zinc-800 bg-zinc-900/40 p-6 rounded-sm text-center space-y-2">
+            <UIcon name="i-heroicons-lock-closed" class="w-5 h-5 text-orange-400 mx-auto" />
+            <div class="text-xs font-bold text-zinc-200 uppercase">Leaderboard Confidential</div>
+            <p class="text-xs text-zinc-500 font-sans">Standings are hidden until released by society administration.</p>
+          </div>
+
+          <template v-else>
+            <div v-if="liveLeaderboard.length === 0" class="border border-zinc-800 bg-zinc-900/40 p-6 rounded-sm text-center text-xs text-zinc-500">
+              NO_SCORECARDS_SUBMITTED_YET
+            </div>
+
+            <div v-else class="border border-zinc-800 divide-y divide-zinc-800 bg-zinc-900/20 rounded-sm overflow-hidden">
+              <div
+                v-for="entry in liveLeaderboard"
+                :key="entry.scorecardId"
+                @click="viewPlayerCard(entry)"
+                class="p-3 flex items-center justify-between hover:bg-zinc-900/60 transition-colors cursor-pointer group"
+              >
+                <div class="flex items-center gap-3 min-w-0">
+                  <div
+                    class="w-6 h-6 rounded-sm border font-bold text-[10px] flex items-center justify-center shrink-0"
+                    :class="entry.rank === 1 ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : entry.rank === 2 ? 'bg-zinc-300/20 text-zinc-200 border-zinc-400/30' : entry.rank === 3 ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-zinc-900 text-zinc-500 border-zinc-800'"
+                  >
+                    #{{ entry.rank }}
+                  </div>
+                  <div class="min-w-0 font-sans">
+                    <span class="text-xs font-bold text-zinc-100 group-hover:text-orange-400 transition-colors block truncate">{{ entry.playerName }}</span>
+                    <span class="text-[10px] font-mono text-zinc-500 block truncate">HCP Index: {{ entry.handicapIndex }}</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3 shrink-0">
+                  <div class="text-right">
+                    <span class="text-sm font-bold text-orange-400 block leading-none">{{ entry.stablefordPoints }}</span>
+                    <span class="text-[9px] uppercase text-zinc-500 block mt-0.5">PTS</span>
+                  </div>
+                  <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-zinc-600 group-hover:text-orange-400 transition-colors" />
+                </div>
               </div>
             </div>
-            <UBadge color="success" variant="subtle" size="xs">Confirmed</UBadge>
+          </template>
+        </div>
+
+        <!-- Lobby Participants Section -->
+        <div class="space-y-3 pt-4 border-t border-zinc-800 font-mono">
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-user-group" class="w-4 h-4 text-orange-400" />
+            <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-200">Registered Lobby Roster ({{ lobbyPlayers.length }})</h3>
+          </div>
+
+          <div v-if="lobbyPlayers.length === 0" class="border border-zinc-800 bg-zinc-900/40 p-4 rounded-sm text-center text-xs text-zinc-500">
+            NO_PLAYERS_REGISTERED_YET
+          </div>
+
+          <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div v-for="p in lobbyPlayers" :key="p.id" class="border border-zinc-800 bg-zinc-900/30 p-2.5 rounded-sm flex items-center justify-between">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-6 h-6 rounded-sm bg-zinc-900 border border-zinc-700 text-orange-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+                  {{ p.name.charAt(0).toUpperCase() }}
+                </div>
+                <div class="min-w-0 font-sans">
+                  <span class="text-xs font-semibold text-zinc-100 block truncate">{{ p.name }}</span>
+                  <span class="text-[10px] font-mono text-zinc-500 block">HCP {{ p.handicapIndex }}</span>
+                </div>
+              </div>
+              <span class="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded-sm shrink-0">
+                CONFIRMED
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Player Scorecard Breakdown Modal (bottom sheet) -->
+      </div>
+    </section>
+
+    <!-- Player Scorecard Breakdown Modal -->
     <Teleport to="body">
       <Transition name="modal">
-        <div v-if="showDetailModal && selectedScorecard" class="fixed inset-0 z-[999] flex items-end justify-center p-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-slate-950/90 backdrop-blur-md" @click.self="showDetailModal = false">
-          <div class="bg-slate-900 border border-slate-800 w-full rounded-t-3xl p-3 sm:p-4 shadow-2xl flex flex-col max-h-[85vh] relative">
-            <div class="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-2 sm:hidden"></div>
-            <div class="flex items-start justify-between border-b border-slate-800 pb-2 shrink-0">
+        <div v-if="showDetailModal && selectedScorecard" class="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" @click.self="showDetailModal = false">
+          <div class="border border-zinc-800 bg-zinc-950 w-full sm:max-w-md rounded-t-md sm:rounded-sm shadow-2xl font-mono overflow-hidden">
+            <div class="px-4 py-3 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between">
               <div>
-                <h2 class="text-sm font-black text-white">{{ selectedScorecard.playerName }}'s Scorecard</h2>
-                <p class="text-[10px] text-slate-400">Stableford Points: <strong class="text-emerald-400">{{ selectedScorecard.stablefordPoints }} pts</strong></p>
+                <div class="text-[10px] text-orange-400 uppercase tracking-wider">SCORECARD_TELEMETRY</div>
+                <h2 class="text-xs sm:text-sm font-bold text-zinc-100 mt-0.5 font-sans">{{ selectedScorecard.playerName }}</h2>
               </div>
-              <button @click="showDetailModal = false" class="text-slate-400 hover:text-white text-xs font-bold p-1 cursor-pointer">✕</button>
+              <button @click="showDetailModal = false" class="w-6 h-6 flex items-center justify-center rounded-sm border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs cursor-pointer">✕</button>
             </div>
-            <div class="overflow-y-auto py-2 space-y-2 flex-1 pr-1">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">Hole-by-Hole</span>
-              <div class="grid grid-cols-3 gap-1.5">
-                <div v-for="(strokes, idx) in selectedScorecard.parsedHoles" :key="idx" class="p-2 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between text-[10px] shadow-sm">
-                  <span class="font-bold text-slate-400">Hole {{ Number(idx) + 1 }}</span>
-                  <span class="font-black text-white bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-lg shadow-inner">{{ strokes ?? '-' }}</span>
+
+            <div class="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div class="border border-zinc-800 bg-zinc-900/40 p-3 rounded-sm flex items-center justify-between text-xs">
+                <span class="text-zinc-400 uppercase">Stableford Total</span>
+                <span class="font-bold text-orange-400 text-base">{{ selectedScorecard.stablefordPoints }} PTS</span>
+              </div>
+
+              <div class="space-y-1.5">
+                <span class="text-[10px] uppercase text-zinc-500 tracking-wider block">Hole-by-Hole Breakdown</span>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <div v-for="(strokes, idx) in selectedScorecard.parsedHoles" :key="idx" class="p-2 bg-zinc-900/50 border border-zinc-800 rounded-sm flex items-center justify-between text-xs">
+                    <span class="text-zinc-500 text-[10px]">H{{ String(Number(idx) + 1).padStart(2, '0') }}</span>
+                    <span class="font-bold text-zinc-100">{{ strokes ?? '—' }}</span>
+                  </div>
                 </div>
               </div>
             </div>
-            <div class="pt-2 border-t border-slate-800 shrink-0">
-              <UButton @click="showDetailModal = false" color="neutral" variant="ghost" block size="sm" class="font-semibold cursor-pointer text-slate-400">Close Breakdown</UButton>
+
+            <div class="p-3 bg-zinc-900 border-t border-zinc-800">
+              <UButton @click="showDetailModal = false" variant="outline" block size="sm" class="rounded-sm border-zinc-700 text-zinc-300 hover:bg-zinc-800 font-mono text-xs uppercase cursor-pointer">
+                CLOSE BREAKDOWN
+              </UButton>
             </div>
           </div>
         </div>
@@ -434,11 +447,11 @@ const handleReleaseScores = async () => {
 <style scoped>
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
-  transform: scale(0.95);
+  transform: scale(0.98);
 }
 </style>

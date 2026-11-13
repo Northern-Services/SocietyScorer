@@ -11,7 +11,7 @@ if (userError.value || !isLoggedIn.value) {
   await navigateTo('/login')
 }
 
-const { data: compRes, refresh } = await useFetch('/api/competitions')
+const { data: compRes } = await useFetch('/api/competitions')
 const competitions = computed(() => compRes.value?.data || [])
 
 // Weather per competition course
@@ -98,153 +98,161 @@ const isLiveToday = (dateString: string) => {
 </script>
 
 <template>
-  <div class="px-3 py-4 space-y-5 pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]">
+  <div class="max-w-3xl mx-auto px-4 py-6 space-y-6 pb-[max(8rem,env(safe-area-inset-bottom)+4rem)]">
 
-    <!-- Page Header -->
-    <div class="relative bg-slate-900/90 border border-slate-800/90 p-3 rounded-3xl backdrop-blur-2xl shadow-2xl overflow-hidden space-y-4">
-      <div class="pointer-events-none absolute -top-8 -right-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-[40px]"></div>
-
-      <div class="relative z-10 space-y-2">
+    <!-- Page Header Console -->
+    <section class="border border-zinc-800 bg-zinc-950 rounded-sm overflow-hidden shadow-2xl font-mono">
+      <div class="px-4 py-2 bg-zinc-900/80 border-b border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400">
         <div class="flex items-center gap-2">
-          <span class="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-md">Society Tournaments</span>
+          <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+          <span class="text-zinc-200 font-bold uppercase tracking-wider">TOURNAMENT_DIRECTORY</span>
         </div>
-        <h1 class="text-lg font-black text-white tracking-tight">Society Competitions</h1>
-        <p class="text-[11px] text-slate-400 leading-relaxed">
-          Browse upcoming fixtures, join lobbies, enter scorecards on match day, and view archived results.
-        </p>
+        <span class="text-orange-400">ACTIVE_LOBBIES</span>
       </div>
 
-      <!-- Search Field -->
-      <div class="relative">
-        <input
-          v-model="search"
-          type="text"
-          placeholder="Search fixtures or venues..."
-          class="w-full pl-8 pr-3 py-2 bg-slate-950/80 border border-slate-800 focus:border-emerald-500/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner"
-        />
-        <UIcon name="i-heroicons-magnifying-glass" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5 pointer-events-none" />
-      </div>
-
-      <!-- Navigation Tabs -->
-      <div class="flex items-center gap-1 pt-2 border-t border-slate-800/80 relative z-10">
-        <button
-          @click="activeTab = 'open'"
-          type="button"
-          class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl text-[10px] font-bold transition-all duration-200 cursor-pointer"
-          :class="activeTab === 'open' ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shadow-sm' : 'bg-slate-950/60 border border-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800/60'"
-        >
-          <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5" />
-          <span>Open</span>
-          <span class="px-1 py-0.5 bg-emerald-500/20 text-emerald-300 text-[9px] rounded-md font-black">{{ openCount }}</span>
-        </button>
-        <button
-          @click="activeTab = 'closed'"
-          type="button"
-          class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl text-[10px] font-bold transition-all duration-200 cursor-pointer"
-          :class="activeTab === 'closed' ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 shadow-sm' : 'bg-slate-950/60 border border-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800/60'"
-        >
-          <UIcon name="i-heroicons-lock-closed" class="w-3.5 h-3.5" />
-          <span>Archived</span>
-          <span class="px-1 py-0.5 bg-amber-500/20 text-amber-300 text-[9px] rounded-md font-black">{{ closedCount }}</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Competitions List -->
-    <div class="space-y-3">
-      <div v-if="filteredCompetitions.length === 0" class="bg-slate-900/60 border border-slate-800/80 p-5 rounded-3xl text-center space-y-2 backdrop-blur-xl">
-        <div class="w-10 h-10 rounded-2xl bg-slate-800/60 text-slate-500 flex items-center justify-center mx-auto text-lg border border-slate-700/50">
-          ⛳
+      <div class="p-4 sm:p-5 space-y-4 font-sans">
+        <div class="space-y-1">
+          <div class="text-[10px] font-mono text-orange-400 uppercase tracking-widest">// SOCIETY FIXTURES</div>
+          <h1 class="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight">Society Competitions</h1>
+          <p class="text-xs text-zinc-400 leading-relaxed">
+            Browse upcoming fixtures, access match lobbies, submit digital scorecards, and audit historical results.
+          </p>
         </div>
-        <h3 class="text-sm font-bold text-white">No {{ activeTab === 'open' ? 'Active' : 'Archived' }} Competitions</h3>
-        <p class="text-[11px] text-slate-400 max-w-xs mx-auto">There are no tournaments matching your current tab or search filter.</p>
+
+        <!-- Search Bar -->
+        <div class="relative font-mono">
+          <input
+            v-model="search"
+            type="text"
+            placeholder="Query fixtures or venues..."
+            class="w-full pl-9 pr-4 py-2 bg-zinc-900 border border-zinc-800 focus:border-orange-500 rounded-sm text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors"
+          />
+          <UIcon name="i-heroicons-magnifying-glass" class="w-4 h-4 text-zinc-500 absolute left-3 top-2.5 pointer-events-none" />
+        </div>
+
+        <!-- Navigation Tabs Matrix -->
+        <div class="grid grid-cols-2 gap-2 pt-1 font-mono">
+          <button
+            @click="activeTab = 'open'"
+            type="button"
+            class="flex items-center justify-center gap-2 px-3 py-2 rounded-sm text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border"
+            :class="activeTab === 'open' ? 'bg-[#F6821F] border-[#F6821F] text-zinc-950' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'"
+          >
+            <UIcon name="i-heroicons-trophy" class="w-4 h-4" />
+            <span>Open</span>
+            <span class="px-1.5 py-0.5 bg-zinc-950 text-orange-400 text-[10px] rounded-sm font-bold">{{ openCount }}</span>
+          </button>
+          <button
+            @click="activeTab = 'closed'"
+            type="button"
+            class="flex items-center justify-center gap-2 px-3 py-2 rounded-sm text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border"
+            :class="activeTab === 'closed' ? 'bg-zinc-800 border-zinc-600 text-zinc-100' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'"
+          >
+            <UIcon name="i-heroicons-lock-closed" class="w-4 h-4" />
+            <span>Archived</span>
+            <span class="px-1.5 py-0.5 bg-zinc-950 text-zinc-300 text-[10px] rounded-sm font-bold">{{ closedCount }}</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Competitions List Grid -->
+    <section class="space-y-3">
+      <div v-if="filteredCompetitions.length === 0" class="border border-zinc-800 bg-zinc-950 p-8 rounded-sm text-center font-mono space-y-2">
+        <div class="text-xs font-bold text-zinc-300 uppercase">NO_{{ activeTab === 'open' ? 'ACTIVE' : 'ARCHIVED' }}_COMPETITIONS</div>
+        <p class="text-[11px] text-zinc-500">There are no tournaments matching your current criteria.</p>
       </div>
 
-      <div v-else class="space-y-3">
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div
           v-for="comp in filteredCompetitions"
           :key="comp.id"
-          class="bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 p-3 rounded-3xl backdrop-blur-xl shadow-xl transition-all duration-300 group"
+          class="group relative border border-zinc-800 bg-zinc-950 hover:border-zinc-700 p-4 rounded-sm transition-colors flex flex-col justify-between space-y-4"
         >
-          <div class="space-y-2.5">
-            <!-- Badges & Title -->
-            <div class="flex items-start gap-1.5 flex-wrap">
+          <!-- Hover Accent Bar -->
+          <div class="absolute top-0 left-0 w-full h-[2px] bg-orange-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
+
+          <div class="space-y-3">
+            <!-- Status & Title -->
+            <div class="flex items-start justify-between gap-2">
               <span
                 v-if="comp.status === 'CLOSED'"
-                class="px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-400 text-[9px] font-bold rounded-md flex items-center gap-0.5"
+                class="px-1.5 py-0.5 bg-zinc-900 border border-zinc-700 text-zinc-400 text-[9px] font-mono font-bold rounded-sm uppercase tracking-wider"
               >
-                🔒 Finalized
+                LOCKED // FINALIZED
               </span>
               <span
                 v-else-if="isLiveToday(comp.date)"
-                class="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[9px] font-bold rounded-md flex items-center gap-0.5 animate-pulse"
+                class="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[9px] font-mono font-bold rounded-sm uppercase tracking-wider animate-pulse"
               >
-                🏆 Live Today
+                ● LIVE TODAY
               </span>
-              <span v-else class="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-bold rounded-md flex items-center gap-0.5">
-                ⏳ Lobby Open
+              <span v-else class="px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[9px] font-mono font-bold rounded-sm uppercase tracking-wider">
+                LOBBY OPEN
               </span>
-              <span class="text-[10px] text-slate-500 font-semibold">• {{ comp.status }}</span>
+              <span class="text-[10px] font-mono text-zinc-500">{{ comp.status }}</span>
             </div>
 
-            <h2 class="text-sm font-black text-white group-hover:text-emerald-400 transition-colors leading-tight">{{ comp.name }}</h2>
+            <h2 class="text-sm font-bold text-zinc-100 group-hover:text-orange-400 transition-colors leading-snug">
+              {{ comp.name }}
+            </h2>
 
             <!-- Metadata -->
-            <div class="flex items-center gap-2.5 text-[10px] text-slate-400 flex-wrap">
-              <span class="flex items-center gap-1 font-medium">
-                <UIcon name="i-heroicons-calendar" class="w-3 h-3 text-emerald-400" />
-                {{ formatUKDate(comp.date) }}
-              </span>
-              <span class="text-slate-600">•</span>
-              <span class="flex items-center gap-1 font-medium">
-                <UIcon name="i-heroicons-map-pin" class="w-3 h-3 text-slate-500" />
-                {{ comp.venue || 'Home Course' }}
-              </span>
+            <div class="space-y-1 text-xs font-mono text-zinc-400">
+              <div class="flex items-center gap-2">
+                <UIcon name="i-heroicons-calendar" class="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                <span>{{ formatUKDate(comp.date) }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                <span class="truncate">{{ comp.venue || 'Home Course' }}</span>
+              </div>
             </div>
 
             <!-- Prize Pool -->
-            <div v-if="comp.prize1st || comp.prize2nd || comp.prize3rd" class="mt-1.5 flex items-center gap-1.5 flex-wrap text-[10px] font-bold">
-              <span class="px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-md text-[9px] uppercase tracking-wider">
-                <UIcon name="i-heroicons-trophy" class="w-3 h-3 text-amber-400 shrink-0" />
-                Pool: £{{ Number(comp.prize1st || 0) + Number(comp.prize2nd || 0) + Number(comp.prize3rd || 0) }}
+            <div v-if="comp.prize1st || comp.prize2nd || comp.prize3rd" class="pt-1 font-mono text-xs">
+              <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-sm text-[10px] font-bold">
+                <UIcon name="i-heroicons-trophy" class="w-3.5 h-3.5 shrink-0" />
+                POOL: £{{ Number(comp.prize1st || 0) + Number(comp.prize2nd || 0) + Number(comp.prize3rd || 0) }}
               </span>
             </div>
 
-            <!-- Weather -->
-            <div v-if="comp.courseId && compWeatherLoading[comp.courseId]" class="mt-1.5 flex items-center gap-2 pt-1 border-t border-slate-800">
-              <UIcon name="i-heroicons-cloud" class="w-3 h-3 text-slate-500 animate-pulse" />
-              <span class="text-[10px] text-slate-500">Loading weather...</span>
-            </div>
-            <div v-else-if="comp.courseId && compWeather[comp.courseId]" class="mt-1.5 flex items-center gap-2 pt-1 border-t border-slate-800">
-              <UIcon name="i-heroicons-cloud" class="w-3 h-3 text-blue-400" />
-              <span class="text-[10px] text-slate-400 flex items-center gap-1">
-                <span class="text-blue-400 font-bold">{{ compWeather[comp.courseId].temperature }}°C</span>
+            <!-- Weather Telemetry -->
+            <div class="pt-2.5 border-t border-zinc-800/80 font-mono text-[10px]">
+              <div v-if="comp.courseId && compWeatherLoading[comp.courseId]" class="text-zinc-500 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-orange-500 animate-ping"></span>
+                <span>FETCHING_MET_DATA...</span>
+              </div>
+              <div v-else-if="comp.courseId && compWeather[comp.courseId]" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-zinc-400">
+                <span class="flex items-center gap-1 text-zinc-200 font-bold">
+                  <UIcon name="i-heroicons-cloud" class="w-3.5 h-3.5 text-orange-400" />
+                  {{ compWeather[comp.courseId].temperature }}°C
+                </span>
                 <span>{{ compWeather[comp.courseId].description }}</span>
-                <span v-if="compWeather[comp.courseId].precipProbability > 0" class="text-blue-400">🌧️ {{ compWeather[comp.courseId].precipProbability }}%</span>
-                <span class="text-slate-400">💨 {{ compWeather[comp.courseId].windspeed }} km/h</span>
-              </span>
-            </div>
-            <div v-else-if="comp.courseId && !compWeather[comp.courseId] && !compWeatherLoading[comp.courseId]" class="mt-1.5 flex items-center gap-2 pt-1 border-t border-slate-800">
-              <UIcon name="i-heroicons-cloud" class="w-3 h-3 text-slate-500" />
-              <span class="text-[10px] text-slate-500">Weather unavailable</span>
+                <span v-if="compWeather[comp.courseId].precipProbability > 0" class="text-sky-400">
+                  RAIN {{ compWeather[comp.courseId].precipProbability }}%
+                </span>
+                <span class="text-zinc-500">WIND {{ compWeather[comp.courseId].windspeed }}km/h</span>
+              </div>
+              <div v-else-if="comp.courseId && !compWeather[comp.courseId] && !compWeatherLoading[comp.courseId]" class="text-zinc-600">
+                MET_DATA // UNAVAILABLE
+              </div>
             </div>
           </div>
 
-          <br/>
-
+          <!-- Lobby Action Button -->
           <UButton
             :to="`/competitions/${comp.id}`"
-            :color="comp.status === 'CLOSED' ? 'neutral' : 'success'"
-            variant="solid"
-            size="sm"
-            class="font-bold w-full cursor-pointer shrink-0 justify-center"
-            :class="comp.status === 'CLOSED' ? 'shadow-slate-800/20' : 'shadow-emerald-500/20'"
+            size="xs"
+            block
+            icon="i-heroicons-arrow-right-circle"
+            class="rounded-sm bg-zinc-900 hover:bg-[#F6821F] text-zinc-200 hover:text-zinc-950 border border-zinc-700 hover:border-[#F6821F] font-mono font-bold uppercase tracking-wider py-2 transition-colors cursor-pointer justify-center"
           >
             {{ comp.status === 'CLOSED' ? 'View Results' : 'Enter Lobby' }}
           </UButton>
         </div>
       </div>
-    </div>
+    </section>
 
   </div>
 </template>

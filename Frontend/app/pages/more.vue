@@ -13,50 +13,83 @@ const handleSignout = async () => {
 </script>
 
 <template>
-  <div class="px-3 py-4 space-y-5 pb-[max(9rem,env(safe-area-inset-bottom)+4rem)]">
+  <div class="max-w-3xl mx-auto px-4 py-6 space-y-6 pb-[max(8rem,env(safe-area-inset-bottom)+4rem)] font-mono">
 
-    <div class="space-y-2">
-      <h1 class="text-xl font-black text-white">More</h1>
-      <p class="text-[11px] text-slate-400">Settings, courses, and society tools.</p>
-    </div>
+    <!-- Page Header Console -->
+    <section class="border border-zinc-800 bg-zinc-950 rounded-sm overflow-hidden shadow-2xl">
+      <div class="px-4 py-2 bg-zinc-900/80 border-b border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+          <span class="text-zinc-200 font-bold uppercase tracking-wider">SYSTEM_CONFIG</span>
+        </div>
+        <span class="text-orange-400">PREFERENCES</span>
+      </div>
 
-    <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-3 shadow-xl space-y-1">
-      <div class="space-y-1">
-        <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block ml-1">Society</label>
-        <NuxtLink to="/courses" class="flex items-center justify-between p-3 text-white hover:bg-slate-800/50 rounded-2xl transition-colors">
-          <span class="flex items-center gap-2">
-            <UIcon name="i-heroicons-flag" class="w-4 h-4" />
-            <span>Course Directory</span>
+      <div class="p-4 sm:p-5 space-y-1 font-sans">
+        <div class="text-[10px] font-mono text-orange-400 uppercase tracking-widest">// DIRECTORY & UTILITIES</div>
+        <h1 class="text-xl sm:text-2xl font-bold text-zinc-100 tracking-tight">More & Settings</h1>
+        <p class="text-xs text-zinc-400">Society infrastructure, course directories, membership rosters, and controls.</p>
+      </div>
+    </section>
+
+    <!-- Navigation Options Matrix -->
+    <section class="border border-zinc-800 bg-zinc-950 rounded-sm overflow-hidden shadow-2xl divide-y divide-zinc-800">
+      
+      <!-- Society Section -->
+      <div class="p-4 space-y-2">
+        <div class="text-[10px] uppercase tracking-wider text-zinc-500">// SOCIETY DIRECTORY</div>
+        <div class="space-y-1">
+          <NuxtLink
+            to="/courses"
+            class="flex items-center justify-between p-3 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800/80 hover:border-orange-500/50 rounded-sm transition-colors group"
+          >
+            <span class="flex items-center gap-2.5 text-xs font-bold text-zinc-200 group-hover:text-orange-400 transition-colors">
+              <UIcon name="i-heroicons-flag" class="w-4 h-4 text-orange-400" />
+              <span>Course Directory</span>
+            </span>
+            <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-zinc-600 group-hover:text-orange-400 transition-colors" />
+          </NuxtLink>
+
+          <NuxtLink
+            to="/members"
+            class="flex items-center justify-between p-3 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800/80 hover:border-orange-500/50 rounded-sm transition-colors group"
+          >
+            <span class="flex items-center gap-2.5 text-xs font-bold text-zinc-200 group-hover:text-orange-400 transition-colors">
+              <UIcon name="i-heroicons-user-group" class="w-4 h-4 text-orange-400" />
+              <span>Member Directory</span>
+            </span>
+            <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-zinc-600 group-hover:text-orange-400 transition-colors" />
+          </NuxtLink>
+        </div>
+      </div>
+
+      <!-- Admin Section -->
+      <div v-if="isAdmin" class="p-4 space-y-2">
+        <div class="text-[10px] uppercase tracking-wider text-orange-400">// ROOT PRIVILEGES</div>
+        <NuxtLink
+          to="/admin"
+          class="flex items-center justify-between p-3 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-800/80 hover:border-orange-500/50 rounded-sm transition-colors group"
+        >
+          <span class="flex items-center gap-2.5 text-xs font-bold text-zinc-200 group-hover:text-orange-400 transition-colors">
+            <UIcon name="i-heroicons-shield-check" class="w-4 h-4 text-orange-400" />
+            <span>Admin Console</span>
           </span>
-          <UIcon name="i-heroicons-chevron-right" class="w-3.5 h-3.5 text-slate-500" />
-        </NuxtLink>
-        <NuxtLink to="/members" class="flex items-center justify-between p-3 text-white hover:bg-slate-800/50 rounded-2xl transition-colors">
-          <span class="flex items-center gap-2">
-            <UIcon name="i-heroicons-user-group" class="w-4 h-4" />
-            <span>Member Directory</span>
-          </span>
-          <UIcon name="i-heroicons-chevron-right" class="w-3.5 h-3.5 text-slate-500" />
+          <UIcon name="i-heroicons-chevron-right" class="w-4 h-4 text-zinc-600 group-hover:text-orange-400 transition-colors" />
         </NuxtLink>
       </div>
 
-      <div v-if="isAdmin" class="space-y-1">
-        <label class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block ml-1">Admin</label>
-        <NuxtLink to="/admin" class="flex items-center justify-between p-3 text-white hover:bg-slate-800/50 rounded-2xl transition-colors">
-          <span class="flex items-center gap-2">
-            <UIcon name="i-heroicons-shield-check" class="w-4 h-4" />
-            <span>Admin Portal</span>
-          </span>
-          <UIcon name="i-heroicons-chevron-right" class="w-3.5 h-3.5 text-slate-500" />
-        </NuxtLink>
-      </div>
-    </div>
+    </section>
 
-    <div v-if="isLoggedIn" class="bg-slate-900/90 border border-red-500/30 rounded-3xl p-3 shadow-xl">
-      <button @click="handleSignout" class="w-full flex items-center justify-center p-3 text-red-400 font-bold hover:bg-red-500/10 rounded-2xl transition-colors">
-        <UIcon name="i-heroicons-arrow-right-start-on-rectangle" class="w-4 h-4 mr-2" />
-        <span>Sign Out</span>
+    <!-- Sign Out Section -->
+    <section v-if="isLoggedIn">
+      <button
+        @click="handleSignout"
+        class="w-full flex items-center justify-center gap-2 p-3 bg-zinc-950 border border-red-500/30 hover:bg-red-500/10 text-red-400 text-xs font-bold uppercase tracking-wider rounded-sm shadow-xl transition-colors cursor-pointer"
+      >
+        <UIcon name="i-heroicons-arrow-right-start-on-rectangle" class="w-4 h-4" />
+        <span>Sign Out Session</span>
       </button>
-    </div>
+    </section>
 
   </div>
 </template>

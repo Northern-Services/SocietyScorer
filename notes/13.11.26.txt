@@ -1,0 +1,12 @@
+Basically just features, bugs and stuff that I want to implement into the website
+
+Date: 13.11.26
+
+Make a email for northern services. Either the email being northernservices@gmail.com or northern.services@gmail.com
+Something that is the same as the Instagram account.
+
+-- Frontend --
+Implement google and email login
+
+-- Apps --
+Make a android version of the web-app

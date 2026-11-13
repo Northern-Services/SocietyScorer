@@ -471,96 +471,98 @@ const items = computed(() => {
     </transition>
 
     <!-- SETTINGS MODAL -->
-    <Transition name="modal">
-      <div
-        v-if="showSettingsModal"
-        class="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-        @click.self="showSettingsModal = false"
-      >
-        <div class="bg-zinc-950 border-t sm:border border-zinc-800 w-full sm:max-w-md rounded-t-md sm:rounded-sm shadow-2xl overflow-hidden">
-          
-          <!-- Modal Header -->
-          <div class="flex items-center justify-between px-4 py-3 bg-zinc-900/60 border-b border-zinc-800">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-heroicons-cog-6-tooth" class="w-4 h-4 text-orange-400" />
-              <h2 class="text-xs font-mono font-bold uppercase tracking-wider text-zinc-100">
-                Player Configuration
-              </h2>
-            </div>
-            <button
-              @click="showSettingsModal = false"
-              class="w-6 h-6 flex items-center justify-center rounded-sm border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-600 font-mono text-xs transition-colors cursor-pointer"
-            >
-              ✕
-            </button>
-          </div>
-
-          <!-- Modal Body -->
-          <div class="p-4 space-y-4">
-            <div v-if="settingsSuccessMessage" class="p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs rounded-sm">
-              ✓ {{ settingsSuccessMessage }}
-            </div>
-            <div v-if="settingsErrorMessage" class="p-2.5 bg-red-500/10 border border-red-500/30 text-red-400 font-mono text-xs rounded-sm">
-              ! {{ settingsErrorMessage }}
-            </div>
-
-            <div class="space-y-3">
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
-                  Display Name
-                </label>
-                <input
-                  v-model="editName"
-                  type="text"
-                  class="w-full px-3 py-2 bg-[#0B0D10] border border-zinc-800 rounded-sm text-zinc-100 text-sm focus:outline-none focus:border-orange-500 transition-colors"
-                />
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showSettingsModal"
+          class="fixed inset-0 z-[999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+          @click.self="showSettingsModal = false"
+        >
+          <div class="bg-zinc-950 border border-zinc-800 w-full max-w-md rounded-sm shadow-2xl overflow-hidden my-auto font-mono">
+            
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-4 py-3 bg-zinc-900/60 border-b border-zinc-800">
+              <div class="flex items-center gap-2">
+                <UIcon name="i-heroicons-cog-6-tooth" class="w-4 h-4 text-orange-400" />
+                <h2 class="text-xs font-bold uppercase tracking-wider text-zinc-100">
+                  Player Configuration
+                </h2>
               </div>
-
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
-                  WHS Handicap Index
-                </label>
-                <input
-                  v-model.number="editHandicap"
-                  type="number"
-                  step="0.1"
-                  min="-5.0"
-                  max="54.0"
-                  class="w-full px-3 py-2 bg-[#0B0D10] border border-zinc-800 rounded-sm text-zinc-100 font-mono text-sm font-bold focus:outline-none focus:border-orange-500 transition-colors"
-                />
-                <p class="text-[11px] font-mono text-zinc-500">
-                  // .5 index values round up automatically
-                </p>
-              </div>
-            </div>
-
-            <div class="flex gap-2 pt-2 border-t border-zinc-800/80">
-              <UButton
+              <button
                 @click="showSettingsModal = false"
-                variant="outline"
-                block
-                size="sm"
-                class="rounded-sm border-zinc-700 text-zinc-300 hover:bg-zinc-900 cursor-pointer"
+                class="w-6 h-6 flex items-center justify-center rounded-sm border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-600 text-xs transition-colors cursor-pointer"
               >
-                Cancel
-              </UButton>
-              <UButton
-                @click="handleSaveSettings"
-                :disabled="settingsSaving"
-                block
-                size="sm"
-                class="rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold cursor-pointer"
-              >
-                {{ settingsSaving ? 'Saving...' : 'Save Changes' }}
-              </UButton>
+                ✕
+              </button>
             </div>
-          </div>
 
-          <!-- Safe area spacer for mobile -->
-          <div class="h-[env(safe-area-inset-bottom)] sm:hidden"></div>
+            <!-- Modal Body -->
+            <div class="p-4 space-y-4 font-sans">
+              <div v-if="settingsSuccessMessage" class="p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs rounded-sm">
+                ✓ {{ settingsSuccessMessage }}
+              </div>
+              <div v-if="settingsErrorMessage" class="p-2.5 bg-red-500/10 border border-red-500/30 text-red-400 font-mono text-xs rounded-sm">
+                ! {{ settingsErrorMessage }}
+              </div>
+
+              <div class="space-y-3">
+                <div class="space-y-1.5">
+                  <label class="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
+                    Display Name
+                  </label>
+                  <input
+                    v-model="editName"
+                    type="text"
+                    class="w-full px-3 py-2 bg-[#0B0D10] border border-zinc-800 rounded-sm text-zinc-100 text-sm focus:outline-none focus:border-orange-500 transition-colors"
+                  />
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-[11px] font-mono uppercase tracking-wider text-zinc-400 block">
+                    WHS Handicap Index
+                  </label>
+                  <input
+                    v-model.number="editHandicap"
+                    type="number"
+                    step="0.1"
+                    min="-5.0"
+                    max="54.0"
+                    class="w-full px-3 py-2 bg-[#0B0D10] border border-zinc-800 rounded-sm text-zinc-100 font-mono text-sm font-bold focus:outline-none focus:border-orange-500 transition-colors"
+                  />
+                  <p class="text-[11px] font-mono text-zinc-500">
+                    // .5 index values round up automatically
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex gap-2 pt-2 border-t border-zinc-800/80">
+                <UButton
+                  @click="showSettingsModal = false"
+                  variant="outline"
+                  block
+                  size="sm"
+                  class="rounded-sm border-zinc-700 text-zinc-300 hover:bg-zinc-900 cursor-pointer font-mono text-xs uppercase"
+                >
+                  Cancel
+                </UButton>
+                <UButton
+                  @click="handleSaveSettings"
+                  :disabled="settingsSaving"
+                  block
+                  size="sm"
+                  class="rounded-sm bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold cursor-pointer font-mono text-xs uppercase"
+                >
+                  {{ settingsSaving ? 'Saving...' : 'Save Changes' }}
+                </UButton>
+              </div>
+            </div>
+
+            <!-- Safe area spacer for mobile -->
+            <div class="h-[env(safe-area-inset-bottom)] sm:hidden"></div>
+          </div>
         </div>
-      </div>
-    </Transition>
+      </Transition>
+    </Teleport>
   </header>
 </template>
 

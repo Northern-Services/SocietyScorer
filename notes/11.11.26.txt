@@ -1,0 +1,29 @@
+Basically just features, bugs and stuff that I want to implement into the website
+
+Date: 11.11.26
+
+-- Bugs and QOL --
+Users can't log in anymore to their account
+Wanting to change the database from sqlite to either postgresql or mysql. This way it makes it simpler
+User dashboard brings up default scorecard when clicking "Start Scorecard"
+
+-- Frontend --
+Try and change up the landing page and general user dashboard. (Which is already done)
+
+-- New Things --
+Try adding browser notifications
+Add new roles into it (This is something that I've wanted to add since 31.10.26)
+
+-- Backend --
+Refactor backend by implementing invite keys until the website or web-app in this case gets to 100 active players.
+With it reaches to 100 active players, they will be given all a special badge to show their effort for the web-app.
+
+Figure out a way for allowing premium users to have more features
+
+-- Extra --
+Add stats page for either frontend or backend
+Docker both backend, database and frontend. Which makes the deployment easier on my end
+
+-- Payments --
+Invite Keys will be going through a service called Stripe and will be around £5 to £10
+as It'll only be invite only for the moment.

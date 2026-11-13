@@ -60,7 +60,6 @@ onMounted(() => fetchCourses())
     <!-- Page Header -->
     <div class="flex items-end justify-between border-b border-zinc-800 pb-3">
       <div>
-        <div class="text-[10px] font-mono text-orange-400 uppercase tracking-widest">// VENUE_INFRASTRUCTURE</div>
         <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100 mt-0.5">Course Directory</h1>
         <p class="text-xs text-zinc-400 mt-0.5">Select a venue to initialize a scorecard or inspect live weather telemetry.</p>
       </div>
