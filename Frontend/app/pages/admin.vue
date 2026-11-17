@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { USER_ROLES, ROLE_LABELS, ROLE_DESCRIPTIONS, isAdminRole, type UserRole } from '@/utils/roles'
 
 definePageMeta({
   middleware: 'admin'
@@ -198,11 +199,13 @@ const showManageUserModal = ref(false)
 const editingUser = ref<any>(null)
 const editUserName = ref('')
 const editUserHcp = ref(0)
+const editUserRole = ref<UserRole>(USER_ROLES.MEMBER)
 
 const openManageUserModal = (player: any) => {
   editingUser.value = player
   editUserName.value = player.name || ''
   editUserHcp.value = Number(player.handicapIndex || 0)
+  editUserRole.value = player.role || USER_ROLES.MEMBER
   showManageUserModal.value = true
 }
 
@@ -215,12 +218,13 @@ const saveManagedUser = async () => {
         name: editUserName.value.trim(),
         handicapIndex: editUserHcp.value,
         nextRoundPenalty: editingUser.value.nextRoundPenalty || 0.0,
-        active: editingUser.value.active ? 1 : 0
+        active: editingUser.value.active ? 1 : 0,
+        role: editUserRole.value
       }
     })
     await refreshPlayers()
     showManageUserModal.value = false
-    addAuditLog('UPDATE_USER', editUserName.value, `HCP: ${editUserHcp.value}`)
+    addAuditLog('UPDATE_USER', editUserName.value, `Role: ${editUserRole.value}, HCP: ${editUserHcp.value}`)
   } catch (err) {
     alert('Failed to update user')
   }
@@ -231,6 +235,7 @@ const showCreateUserModal = ref(false)
 const newUserName = ref('')
 const newUserUsername = ref('')
 const newUserPassword = ref('')
+const newUserRole = ref<UserRole>(USER_ROLES.MEMBER)
 
 const createUser = async () => {
   if (!newUserName.value || !newUserUsername.value || !newUserPassword.value) {
@@ -244,7 +249,8 @@ const createUser = async () => {
         name: newUserName.value.trim(),
         username: newUserUsername.value.trim().toLowerCase(),
         password: newUserPassword.value,
-        handicapIndex: 18.0
+        handicapIndex: 18.0,
+        role: newUserRole.value
       }
     })
     await refreshPlayers()
@@ -252,6 +258,7 @@ const createUser = async () => {
     newUserName.value = ''
     newUserUsername.value = ''
     newUserPassword.value = ''
+    newUserRole.value = USER_ROLES.MEMBER
     addAuditLog('CREATE_USER', newUserName.value, 'New member registered')
   } catch (err: any) {
     alert(err?.data?.statusMessage || 'Failed to create user.')
@@ -528,7 +535,20 @@ const navItems = [
               </div>
               <div class="min-w-0">
                 <span class="text-xs font-semibold text-zinc-100 block truncate font-sans">{{ player.name }}</span>
-                <span class="text-[10px] text-zinc-500 block truncate">@{{ player.username }} • Role: {{ player.role }} • HCP: {{ player.handicapIndex }}</span>
+                <span class="text-[10px] text-zinc-500 block truncate">@{{ player.username }} • HCP: {{ player.handicapIndex }}</span>
+                <span
+                  class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm"
+                  :class="
+                    player.role === USER_ROLES.SITE_ADMIN
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                      : player.role === USER_ROLES.DEVELOPER
+                        ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
+                        : player.role === USER_ROLES.UNION_ADMIN
+                          ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30'
+                          : 'bg-zinc-800 text-zinc-400 border border-zinc-700'"
+                >
+                  {{ ROLE_LABELS[player.role as keyof typeof ROLE_LABELS] || player.role }}
+                </span>
               </div>
             </div>
 
@@ -786,6 +806,13 @@ const navItems = [
               <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Handicap Index</label>
               <input v-model.number="editUserHcp" type="number" step="0.1" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500 font-bold" />
             </div>
+            <div>
+              <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Role</label>
+              <select v-model="editUserRole" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500">
+                <option v-for="(label, key) in ROLE_LABELS" :key="key" :value="key">{{ label }}</option>
+              </select>
+              <p class="text-[9px] text-zinc-500 mt-1">{{ ROLE_DESCRIPTIONS[editUserRole as keyof typeof ROLE_DESCRIPTIONS] || '' }}</p>
+            </div>
           </div>
           <div class="flex gap-2 pt-2 border-t border-zinc-800">
             <button @click="showManageUserModal = false" class="flex-1 py-2 bg-zinc-900 border border-zinc-700 text-zinc-300 rounded-sm font-bold text-xs hover:bg-zinc-800 transition-colors cursor-pointer">
@@ -817,6 +844,13 @@ const navItems = [
             <div>
               <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Password</label>
               <input v-model="newUserPassword" type="password" placeholder="••••••••" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+            </div>
+            <div>
+              <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Role</label>
+              <select v-model="newUserRole" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500">
+                <option v-for="(label, key) in ROLE_LABELS" :key="key" :value="key">{{ label }}</option>
+              </select>
+              <p class="text-[9px] text-zinc-500 mt-1">{{ ROLE_DESCRIPTIONS[newUserRole as keyof typeof ROLE_DESCRIPTIONS] || '' }}</p>
             </div>
           </div>
           <div class="flex gap-2 pt-2 border-t border-zinc-800">

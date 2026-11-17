@@ -16,7 +16,7 @@ export async function initializeDatabase() {
       name TEXT NOT NULL,
       handicapIndex REAL NOT NULL,
       nextRoundPenalty REAL DEFAULT 0.0,
-      role TEXT DEFAULT 'PLAYER',
+      role TEXT DEFAULT 'MEMBER',
       active INTEGER DEFAULT 1,
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP
     );

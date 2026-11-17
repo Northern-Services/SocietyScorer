@@ -61,6 +61,7 @@ if (userError.value || !isLoggedIn.value) {
 const playerProfile = computed(() => userRes.value?.data || {
   id: '', name: 'Society Member', username: '', handicapIndex: 0, nextRoundPenalty: 0, playingHandicap: 0, role: 'MEMBER'
 })
+const { isAdminRole } = await import('@/utils/roles')
 
 // 2. Fetch active & upcoming competitions
 const { data: compRes } = await useFetch('/api/competitions/upcoming')
@@ -108,7 +109,7 @@ watch(showDetailModal, (isOpen) => {
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
           <span class="text-orange-400 font-bold uppercase tracking-wider">
-            {{ playerProfile.role === 'ADMIN' ? 'ROLE // ADMIN' : 'ROLE // MEMBER' }}
+            {{ isAdminRole(playerProfile.role) ? 'ROLE // ADMIN' : 'ROLE // MEMBER' }}
           </span>
         </div>
         <span class="text-zinc-400">@{{ playerProfile.username }}</span>

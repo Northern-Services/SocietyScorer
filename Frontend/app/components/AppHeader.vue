@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { isAdminRole } from '@/utils/roles'
 
 const route = useRoute()
 
@@ -193,7 +194,7 @@ const items = computed(() => {
   ]
   if (isLoggedIn.value) {
     baseItems.unshift({ label: 'Dashboard', to: '/' })
-    if (user.value?.role === 'ADMIN') {
+    if (isAdminRole(user.value?.role)) {
       baseItems.push({ label: 'Admin Portal', to: '/admin' })
     }
   }

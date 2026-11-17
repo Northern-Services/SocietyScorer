@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { isAdminRole } from '@/utils/roles'
 
 const { data: userRes } = await useFetch('/api/auth/me', { ignoreResponseError: true })
 const user = computed(() => userRes.value?.data)
 const isLoggedIn = computed(() => !!user.value)
-const isAdmin = computed(() => user.value?.role === 'ADMIN')
+const isAdmin = computed(() => isAdminRole(user.value?.role))
 
 const handleSignout = async () => {
   await $fetch('/api/auth/logout', { method: 'POST' })

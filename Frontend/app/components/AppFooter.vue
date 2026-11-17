@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { isAdminRole } from '@/utils/roles'
 
 const currentYear = computed(() => new Date().getFullYear())
 
-const links = [
+const { data: userRes } = await useFetch('/api/auth/me', { ignoreResponseError: true })
+const user = computed(() => userRes.value?.data || null)
+
+const links = computed(() => [
   { label: 'Scorecard', to: '/scorecard', icon: 'i-heroicons-pencil-square' },
   { label: 'Competitions', to: '/competitions', icon: 'i-heroicons-trophy' },
   { label: 'Results', to: '/results', icon: 'i-heroicons-chart-bar' },
-  { label: 'Admin', to: '/admin', icon: 'i-heroicons-shield-check' },
+  ...(user.value && isAdminRole(user.value.role) ? [{ label: 'Admin', to: '/admin', icon: 'i-heroicons-shield-check' }] : []),
   { label: 'Privacy Policy', to: '/privacy', icon: 'i-heroicons-lock-closed' }
-]
+])
 </script>
 
 <template>

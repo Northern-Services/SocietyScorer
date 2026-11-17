@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { isAdminRole } from '@/utils/roles'
 
 const route = useRoute()
 const compId = route.params.id as string
@@ -9,7 +10,7 @@ const competition = computed(() => compRes.value?.data || compRes.value?.competi
 
 const { data: userRes } = await useFetch('/api/auth/me', { ignoreResponseError: true })
 const currentUser = computed(() => userRes.value?.data || null)
-const isAdmin = computed(() => currentUser.value?.role === 'ADMIN')
+const isAdmin = computed(() => isAdminRole(currentUser.value?.role))
 
 const { data: lobbyRes, refresh: refreshLobby } = await useFetch(`/api/competitions/${compId}/lobby`)
 const lobbyPlayers = computed(() => lobbyRes.value?.data || [])

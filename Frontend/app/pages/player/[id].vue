@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { isAdminRole, ROLE_LABELS } from '@/utils/roles'
 
 const route = useRoute()
 const playerId = route.params.id
@@ -75,7 +76,7 @@ onMounted(() => fetchProfile())
             <div class="space-y-0.5">
               <div class="flex items-center gap-2">
                 <h1 class="text-lg font-extrabold text-white">{{ profileData.player.name }}</h1>
-                <span v-if="profileData.player.role === 'ADMIN'" class="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold rounded-md">Admin</span>
+                <span v-if="isAdminRole(profileData.player.role)" class="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold rounded-md">{{ ROLE_LABELS[profileData.player.role as keyof typeof ROLE_LABELS] }}</span>
               </div>
               <p class="text-[11px] text-slate-400">@{{ profileData.player.username }}</p>
             </div>

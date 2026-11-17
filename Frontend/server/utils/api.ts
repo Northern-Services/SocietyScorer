@@ -1,5 +1,6 @@
 import { getCookie, setCookie, deleteCookie, createError, readBody, getQuery, setHeader } from 'h3'
 import { db } from './db'
+import { isAdminRole, USER_ROLES } from './roles'
 
 /** Extract authenticated user id from session cookie */
 export const getAuthUserId = (event: any): string | null =>
@@ -16,10 +17,14 @@ export const requireAuth = (event: any): string => {
 export const requireAdmin = async (event: any): Promise<string> => {
   const id = requireAuth(event)
   const admin = (await db.execute('SELECT role FROM players WHERE id = ?', [id])).rows[0] as any
-  if (!admin || admin.role !== 'ADMIN')
+  if (!admin || !isAdminRole(admin.role))
     throw createError({ statusCode: 403, statusMessage: 'Forbidden. Admin privileges required.' })
   return id
 }
+
+/** Re-export role constants for use in route handlers */
+export { USER_ROLES, isAdminRole, DEFAULT_ROLE, FIRST_USER_ROLE }
+export type { UserRole }
 
 /** Standard success response wrapper */
 export const ok = (data: any = {}, message?: string) => ({
