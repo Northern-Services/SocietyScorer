@@ -127,7 +127,7 @@ watch(showDetailModal, (isOpen) => {
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
           <UButton
-            to="/scorecard"
+            to="/courses"
             size="sm"
             icon="i-heroicons-pencil-square"
             block

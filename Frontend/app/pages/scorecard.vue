@@ -111,10 +111,10 @@ const shotsReceived = computed(() => {
 // Player's personal handicap band for this round
 const handicapBand = computed(() => {
   const hcp = playingHandicap.value
-  if (hcp <= 6) return { label: 'Band 1 (0–6)', rate: 0.2, color: 'text-emerald-400' }
-  if (hcp <= 12) return { label: 'Band 2 (7–12)', rate: 0.4, color: 'text-blue-400' }
-  if (hcp <= 18) return { label: 'Band 3 (13–18)', rate: 0.6, color: 'text-amber-400' }
-  return { label: 'Band 4 (19–32)', rate: 0.8, color: 'text-rose-400' }
+  if (hcp <= 6) return { label: 'Band 1 (0–6)', rate: 0.2, color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' }
+  if (hcp <= 12) return { label: 'Band 2 (7–12)', rate: 0.4, color: 'text-sky-400 border-sky-500/30 bg-sky-500/10' }
+  if (hcp <= 18) return { label: 'Band 3 (13–18)', rate: 0.6, color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' }
+  return { label: 'Band 4 (19–32)', rate: 0.8, color: 'text-rose-400 border-rose-500/30 bg-rose-500/10' }
 })
 
 const holePoints = computed(() => {
@@ -257,13 +257,19 @@ watch(
         </div>
 
         <div class="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div class="space-y-1 min-w-0">
+          <div class="space-y-1.5 min-w-0">
             <div class="text-[10px] text-orange-400 uppercase tracking-widest">// VENUE</div>
             <h1 class="text-lg sm:text-xl font-bold text-zinc-100 font-sans truncate">{{ course.name }}</h1>
-            <p class="text-xs text-zinc-400 font-sans flex items-center gap-1.5">
-              <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-              <span>{{ course.location }}</span>
-            </p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="text-xs text-zinc-400 font-sans flex items-center gap-1.5">
+                <UIcon name="i-heroicons-map-pin" class="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                <span>{{ course.location }}</span>
+              </p>
+              <!-- Handicap Band Badge -->
+              <span class="px-2 py-0.5 border text-[10px] font-bold rounded-sm uppercase" :class="handicapBand.color">
+                {{ handicapBand.label }}
+              </span>
+            </div>
           </div>
 
           <!-- Live Score Summary Badge -->
@@ -384,9 +390,14 @@ watch(
             </div>
           </div>
 
-          <div class="text-right">
-            <span class="text-[10px] text-orange-400 block uppercase">Shots Received</span>
-            <span class="text-sm font-bold text-zinc-100">+{{ shotsReceived }}</span>
+          <div class="text-right flex items-center gap-3">
+            <div>
+              <span class="text-[10px] text-orange-400 block uppercase">Shots Received</span>
+              <span class="text-sm font-bold text-zinc-100">+{{ shotsReceived }}</span>
+            </div>
+            <span class="px-2 py-1 border text-[10px] font-bold rounded-sm uppercase hidden sm:inline-block" :class="handicapBand.color">
+              {{ handicapBand.label }}
+            </span>
           </div>
         </div>
 
