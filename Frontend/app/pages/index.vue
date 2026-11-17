@@ -36,6 +36,35 @@ const metrics = computed(() => [
   { val: `${stats.value.totalCompetitions}`, label: 'FIXTURES LOGGED', sub: 'Season Telemetry' },
   { val: `£${stats.value.totalPrizePool.toLocaleString()}`, label: 'PRIZE POOL', sub: 'Distributed' }
 ])
+
+// Simulated hole telemetry presets to showcase the engine to new players
+const sampleHoles = [
+  { hole: 3, par: 3, si: 14, gross: 3, shots: 0, net: 3, points: 2, badge: 'PAR' },
+  { hole: 7, par: 5, si: 2, gross: 4, shots: 1, net: 3, points: 4, badge: 'NET EAGLE' },
+  { hole: 12, par: 4, si: 1, gross: 5, shots: 1, net: 4, points: 2, badge: 'NET PAR' },
+  { hole: 18, par: 4, si: 6, gross: 4, shots: 1, net: 3, points: 3, badge: 'NET BIRDIE' },
+  { hole: 9, par: 3, si: 18, gross: 2, shots: 0, net: 2, points: 3, badge: 'BIRDIE' },
+  { hole: 14, par: 5, si: 4, gross: 6, shots: 1, net: 5, points: 2, badge: 'NET PAR' }
+]
+
+const activeIndex = ref(0)
+let intervalId: any = null
+
+onMounted(() => {
+  // Start on a random hole preset
+  activeIndex.value = Math.floor(Math.random() * sampleHoles.length)
+  
+  // Rotate demo telemetry every 4 seconds
+  intervalId = setInterval(() => {
+    activeIndex.value = (activeIndex.value + 1) % sampleHoles.length
+  }, 4000)
+})
+
+onUnmounted(() => {
+  if (intervalId) clearInterval(intervalId)
+})
+
+const currentDemo = computed(() => sampleHoles[activeIndex.value])
 </script>
 
 <template>
@@ -90,29 +119,41 @@ const metrics = computed(() => [
         </div>
 
         <!-- Mini Live Engine Preview Card (Cloudflare Console Aesthetic) -->
-        <div class="border border-zinc-800 bg-zinc-950/90 divide-y divide-zinc-800/80 font-mono text-xs">
-          <div class="px-3.5 py-2 bg-zinc-900/50 flex items-center justify-between text-[11px] text-zinc-400">
-            <span>HOLE_18 // PAR 4 • SI 6</span>
-            <span class="text-emerald-400">● SYNCED</span>
+        <div class="border border-zinc-800 bg-zinc-950/90 font-mono text-xs shadow-2xl rounded-sm overflow-hidden">
+          
+          <!-- Top Header Bar -->
+          <div class="px-3.5 py-2 bg-zinc-900/80 border-b border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-400">
+            <Transition name="fade" mode="out-in">
+              <span :key="currentDemo.hole">HOLE_{{ currentDemo.hole }} // PAR {{ currentDemo.par }} • SI {{ currentDemo.si }}</span>
+            </Transition>
+            <span class="text-emerald-400 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span>LIVE SIMULATION</span>
+            </span>
           </div>
-          <div class="grid grid-cols-4 divide-x divide-zinc-800/80 text-center py-3">
-            <div>
-              <div class="text-[10px] text-zinc-500 uppercase">Gross</div>
-              <div class="text-sm font-bold text-white mt-0.5">4</div>
+          
+          <!-- Telemetry Grid with Smooth Transition -->
+          <Transition name="slide-fade" mode="out-in">
+            <div :key="activeIndex" class="grid grid-cols-4 divide-x divide-zinc-800/80 text-center py-3.5 bg-zinc-950">
+              <div>
+                <div class="text-[10px] text-zinc-500 uppercase">Gross</div>
+                <div class="text-sm font-bold text-white mt-0.5">{{ currentDemo.gross }}</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-zinc-500 uppercase">Shots</div>
+                <div class="text-sm font-bold text-orange-400 mt-0.5">+{{ currentDemo.shots }}</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-zinc-500 uppercase">Net</div>
+                <div class="text-sm font-bold text-white mt-0.5">{{ currentDemo.net }}</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-zinc-500 uppercase">Points</div>
+                <div class="text-sm font-bold text-emerald-400 mt-0.5">{{ currentDemo.points }} PTS</div>
+              </div>
             </div>
-            <div>
-              <div class="text-[10px] text-zinc-500 uppercase">Shots</div>
-              <div class="text-sm font-bold text-orange-400 mt-0.5">+1</div>
-            </div>
-            <div>
-              <div class="text-[10px] text-zinc-500 uppercase">Net</div>
-              <div class="text-sm font-bold text-white mt-0.5">3</div>
-            </div>
-            <div>
-              <div class="text-[10px] text-zinc-500 uppercase">Points</div>
-              <div class="text-sm font-bold text-emerald-400 mt-0.5">3 PTS</div>
-            </div>
-          </div>
+          </Transition>
+
         </div>
       </section>
 
@@ -177,3 +218,31 @@ const metrics = computed(() => [
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Smooth Fade & Slide Animation */
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
