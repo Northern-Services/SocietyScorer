@@ -1,4 +1,4 @@
-import { requireAuth, db, readBody, ok, handleError } from '../../utils/api'
+import { requireAuth, db, readBody, ok, handleError, getAuthUserId } from '../../utils/api'
 import { randomUUID } from 'crypto'
 
 export default defineEventHandler(async (event) => {
@@ -16,17 +16,17 @@ export default defineEventHandler(async (event) => {
   const scoresJson = typeof scores === 'string' ? scores : JSON.stringify(scores)
   try {
     if (competitionId) {
-      const existing = db.prepare(`SELECT id FROM scorecards WHERE competitionId = ? AND playerId = ?`).get(competitionId, playerId) as any
+      const existing = (await db.execute(`SELECT id FROM scorecards WHERE competitionId = ? AND playerId = ?`, [competitionId, playerId])).rows[0] as any
       if (existing) {
-        db.prepare(`UPDATE scorecards SET holesCompleted = ?, totalPoints = ?, scores = ? WHERE id = ?`).run(holesCompleted, totalPoints, scoresJson, existing.id)
+        await db.execute(`UPDATE scorecards SET holesCompleted = ?, totalPoints = ?, scores = ? WHERE id = ?`, [holesCompleted, totalPoints, scoresJson, existing.id])
         return ok({ scorecardId: existing.id })
       }
       const newId = randomUUID()
-      db.prepare(`INSERT INTO scorecards (id, competitionId, playerId, holesCompleted, totalPoints, scores) VALUES (?, ?, ?, ?, ?, ?)`).run(newId, competitionId, playerId, holesCompleted, totalPoints, scoresJson)
+      await db.execute(`INSERT INTO scorecards (id, competitionId, playerId, holesCompleted, totalPoints, scores) VALUES (?, ?, ?, ?, ?, ?)`, [newId, competitionId, playerId, holesCompleted, totalPoints, scoresJson])
       return ok({ scorecardId: newId })
     }
     const newId = randomUUID()
-    db.prepare(`INSERT INTO scorecards (id, competitionId, playerId, holesCompleted, totalPoints, scores) VALUES (?, ?, ?, ?, ?, ?)`).run(newId, null, playerId, holesCompleted, totalPoints, scoresJson)
+    await db.execute(`INSERT INTO scorecards (id, competitionId, playerId, holesCompleted, totalPoints, scores) VALUES (?, ?, ?, ?, ?, ?)`, [newId, null, playerId, holesCompleted, totalPoints, scoresJson])
     return ok({ scorecardId: newId })
   } catch (error) { handleError(error, 'Failed to save scorecard.') }
 })

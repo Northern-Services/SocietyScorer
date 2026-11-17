@@ -11,17 +11,17 @@ export default defineEventHandler(async (event: any) => {
     throw createError({ statusCode: 400, statusMessage: 'Invalid submission data. Must include competition ID and 18 hole scores.' })
 
   try {
-    const comp = db.prepare('SELECT * FROM competitions WHERE id = ?').get(competitionId) as any
+    const comp = (await db.execute('SELECT * FROM competitions WHERE id = ?', [competitionId])).rows[0] as any
     if (!comp || comp.status !== 'OPEN') throw createError({ statusCode: 400, statusMessage: 'Competition is closed or does not exist.' })
 
     const today: string = (new Date().toISOString().split('T')[0]) as string
     const compDate: string = (new Date(comp.date).toISOString().split('T')[0]) as string
     if (today < compDate) throw createError({ statusCode: 403, statusMessage: `Scorecards cannot be submitted yet. This competition unlocks on ${compDate}.` })
 
-    const player = db.prepare('SELECT * FROM players WHERE id = ?').get(authUserId) as any
+    const player = (await db.execute('SELECT * FROM players WHERE id = ?', [authUserId])).rows[0] as any
     if (!player) throw createError({ statusCode: 404, statusMessage: 'Player record not found.' })
 
-    const holes = db.prepare('SELECT * FROM holes ORDER BY holeNumber ASC').all() as any[]
+    const holes = (await db.execute('SELECT * FROM holes ORDER BY holeNumber ASC')).rows as any[]
     const defaultHoles = Array.from({ length: 18 }, (_, i) => ({ holeNumber: i + 1, par: i === 2 || i === 6 || i === 10 || i === 14 ? 3 : i === 3 || i === 7 || i === 11 || i === 16 ? 5 : 4, strokeIndex: i + 1 }))
     const courseHoles = holes.length === 18 ? holes : defaultHoles
 
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event: any) => {
     // Fetch course-specific handicap bands
     let courseBands: HandicapBand[] | undefined
     if (comp.courseId) {
-      const course = db.prepare('SELECT handicapRules FROM courses WHERE id = ?').get(comp.courseId) as any
+      const course = (await db.execute('SELECT handicapRules FROM courses WHERE id = ?', [comp.courseId])).rows[0] as any
       if (course?.handicapRules) {
         try {
           const parsed = typeof course.handicapRules === 'string' ? JSON.parse(course.handicapRules) : course.handicapRules
@@ -61,7 +61,7 @@ export default defineEventHandler(async (event: any) => {
 
     // Ensure twos table exists (migration for existing DBs)
     try {
-      db.prepare(`
+      await db.execute(`
         CREATE TABLE IF NOT EXISTS twos (
           id TEXT PRIMARY KEY,
           competitionId TEXT NOT NULL,
@@ -72,15 +72,23 @@ export default defineEventHandler(async (event: any) => {
           FOREIGN KEY (playerId) REFERENCES players(id),
           UNIQUE(competitionId, playerId, holeNumber)
         )
-      `).run()
+      `)
     } catch { /* table may already exist */ }
 
-    db.transaction(() => {
-      db.prepare(`INSERT INTO scores (id, competitionId, playerId, holeScores, stablefordPoints, handicapBeforeRound, handicapAfterRound) VALUES (?, ?, ?, ?, ?, ?, ?)`)
-        .run(scoreId, competitionId, player.id, JSON.stringify(holeScores), totalStablefordPoints, handicapBeforeRound, handicapAfterRound)
-      twosDetected.forEach((holeNum: number) => db.prepare(`INSERT INTO twos (id, competitionId, playerId, holeNumber) VALUES (?, ?, ?, ?)`).run(crypto.randomUUID(), competitionId, player.id, holeNum))
-      db.prepare(`UPDATE players SET handicapIndex = ?, nextRoundPenalty = 0.0 WHERE id = ?`).run(handicapAfterRound, player.id)
-    })()
+    await db.batch([
+      {
+        sql: `INSERT INTO scores (id, competitionId, playerId, holeScores, stablefordPoints, handicapBeforeRound, handicapAfterRound) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [scoreId, competitionId, player.id, JSON.stringify(holeScores), totalStablefordPoints, handicapBeforeRound, handicapAfterRound]
+      },
+      ...twosDetected.map((holeNum: number) => ({
+        sql: `INSERT INTO twos (id, competitionId, playerId, holeNumber) VALUES (?, ?, ?, ?)`,
+        args: [crypto.randomUUID(), competitionId, player.id, holeNum]
+      })),
+      {
+        sql: `UPDATE players SET handicapIndex = ?, nextRoundPenalty = 0.0 WHERE id = ?`,
+        args: [handicapAfterRound, player.id]
+      }
+    ])
 
     return ok({ data: { scoreId, stablefordPoints: totalStablefordPoints, handicapBeforeRound, handicapAfterRound, handicapDelta: -cutResult.cutAmount, twosCount: twosDetected.length, twosHoles: twosDetected } })
   } catch (error: any) { handleError(error) }

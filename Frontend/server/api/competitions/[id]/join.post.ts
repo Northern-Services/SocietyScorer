@@ -8,10 +8,10 @@ export default defineEventHandler(async (event) => {
   const pid = playerId || authUserId
   if (!compId || !pid) throw createError({ statusCode: 400, statusMessage: 'Missing competition or player ID.' })
   try {
-    if (!db.prepare(`SELECT * FROM competition_lobby WHERE competitionId = ? AND playerId = ?`).get(compId, pid))
-      db.prepare(`INSERT INTO competition_lobby (id, competitionId, playerId) VALUES (?, ?, ?)`).run(randomUUID(), compId, pid)
-    if (!db.prepare(`SELECT id FROM scorecards WHERE competitionId = ? AND playerId = ?`).get(compId, pid))
-      db.prepare(`INSERT INTO scorecards (id, competitionId, playerId, holesCompleted, totalPoints, scores) VALUES (?, ?, ?, 0, 0, '{}')`).run(randomUUID(), compId, pid)
+    if (!(await db.execute(`SELECT * FROM competition_lobby WHERE competitionId = ? AND playerId = ?`, [compId, pid])).rows[0])
+      await db.execute(`INSERT INTO competition_lobby (id, competitionId, playerId) VALUES (?, ?, ?)`, [randomUUID(), compId, pid])
+    if (!(await db.execute(`SELECT id FROM scorecards WHERE competitionId = ? AND playerId = ?`, [compId, pid])).rows[0])
+      await db.execute(`INSERT INTO scorecards (id, competitionId, playerId, holesCompleted, totalPoints, scores) VALUES (?, ?, ?, 0, 0, '{}')`, [randomUUID(), compId, pid])
     return ok({ success: true })
   } catch (e) { handleError(e, 'Failed to join lobby.') }
 })

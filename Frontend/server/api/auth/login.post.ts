@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   const { username, password } = await readBody(event)
   if (!username || !password) throw createError({ statusCode: 400, statusMessage: 'Username and password are required.' })
 
-  const user = db.prepare(`SELECT id, password, active FROM players WHERE LOWER(username) = LOWER(?)`).get(username.trim()) as any
+  const user = (await db.execute(`SELECT id, password, active FROM players WHERE LOWER(username) = LOWER(?)`, [username.trim()])).rows[0] as any
   if (!user || !user.active) throw createError({ statusCode: 401, statusMessage: 'Invalid username or password.' })
 
   const isValid = await bcrypt.compare(password, user.password)

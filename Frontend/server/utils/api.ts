@@ -13,9 +13,9 @@ export const requireAuth = (event: any): string => {
 }
 
 /** Require admin role; throws 403 if missing or not admin */
-export const requireAdmin = (event: any): string => {
+export const requireAdmin = async (event: any): Promise<string> => {
   const id = requireAuth(event)
-  const admin = db.prepare('SELECT role FROM players WHERE id = ?').get(id) as any
+  const admin = (await db.execute('SELECT role FROM players WHERE id = ?', [id])).rows[0] as any
   if (!admin || admin.role !== 'ADMIN')
     throw createError({ statusCode: 403, statusMessage: 'Forbidden. Admin privileges required.' })
   return id

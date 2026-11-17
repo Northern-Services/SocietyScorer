@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   try {
     // Ensure twos table exists (migration for existing DBs)
     try {
-      db.prepare(`
+      await db.execute(`
         CREATE TABLE IF NOT EXISTS twos (
           id TEXT PRIMARY KEY,
           competitionId TEXT NOT NULL,
@@ -17,15 +17,15 @@ export default defineEventHandler(async (event) => {
           FOREIGN KEY (playerId) REFERENCES players(id),
           UNIQUE(competitionId, playerId, holeNumber)
         )
-      `).run()
+      `)
     } catch { /* table may already exist */ }
-    const twos = db.prepare(`
+    const twos = (await db.execute(`
       SELECT t.id, t.playerId, t.holeNumber, p.name as playerName, p.username
       FROM twos t
       JOIN players p ON t.playerId = p.id
       WHERE t.competitionId = ?
       ORDER BY t.holeNumber ASC
-    `).all(compId) as any[]
+    `, [compId])).rows as any[]
     return ok({ data: twos })
   } catch (e) { handleError(e) }
 })

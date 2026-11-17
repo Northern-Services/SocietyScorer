@@ -6,11 +6,11 @@ export default defineEventHandler(async (event) => {
   const authUserId = getAuthUserId(event)
   if (!compId) throw createError({ statusCode: 400, statusMessage: 'Missing competition ID.' })
   if (!authUserId) throw createError({ statusCode: 401, statusMessage: 'Unauthorized.' })
-  requireAdmin(event)
-  const competition = db.prepare(`SELECT * FROM competitions WHERE id = ?`).get(compId) as any
+  await requireAdmin(event)
+  const competition = (await db.execute(`SELECT * FROM competitions WHERE id = ?`, [compId])).rows[0] as any
   if (!competition) throw createError({ statusCode: 404, statusMessage: 'Competition not found.' })
   try {
-    const leaderboards = db.prepare(`SELECT s.id as scorecardId, s.playerId, p.name as playerName, COALESCE(p.handicapIndex, 0) as handicapIndex, COALESCE(s.stablefordPoints, 0) as stablefordPoints, s.holeScores FROM scores s JOIN players p ON s.playerId = p.id WHERE s.competitionId = ? ORDER BY s.stablefordPoints DESC`).all(compId) as any[]
+    const leaderboards = (await db.execute(`SELECT s.id as scorecardId, s.playerId, p.name as playerName, COALESCE(p.handicapIndex, 0) as handicapIndex, COALESCE(s.stablefordPoints, 0) as stablefordPoints, s.holeScores FROM scores s JOIN players p ON s.playerId = p.id WHERE s.competitionId = ? ORDER BY s.stablefordPoints DESC`, [compId])).rows as any[]
     let currentRank = 1
     const ranked = leaderboards.map((entry, i) => {
       if (i > 0 && entry.stablefordPoints < leaderboards[i - 1].stablefordPoints) currentRank = i + 1

@@ -1,8 +1,8 @@
 import { db, ok, handleError } from '../utils/api'
 
-export default defineEventHandler(() => {
+export default defineEventHandler(async () => {
   try {
-    const players = db.prepare('SELECT * FROM players ORDER BY name ASC').all()
+    const players = (await db.execute('SELECT * FROM players ORDER BY name ASC')).rows
     return ok({ data: players })
   } catch (error) { handleError(error) }
 })

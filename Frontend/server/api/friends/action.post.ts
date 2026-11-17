@@ -9,12 +9,12 @@ export default defineEventHandler(async (event) => {
 
   try {
     if (action === 'ADD') {
-      const existing = db.prepare('SELECT id FROM friendships WHERE requesterId = ? AND receiverId = ?').get(authUserId, targetUserId)
-      if (!existing) db.prepare(`INSERT INTO friendships (id, requesterId, receiverId, status) VALUES (?, ?, ?, 'PENDING')`).run(crypto.randomUUID(), authUserId, targetUserId)
+      const existing = (await db.execute('SELECT id FROM friendships WHERE requesterId = ? AND receiverId = ?', [authUserId, targetUserId])).rows[0]
+      if (!existing) await db.execute(`INSERT INTO friendships (id, requesterId, receiverId, status) VALUES (?, ?, ?, 'PENDING')`, [crypto.randomUUID(), authUserId, targetUserId])
     } else if (action === 'ACCEPT') {
-      db.prepare(`UPDATE friendships SET status = 'ACCEPTED' WHERE requesterId = ? AND receiverId = ?`).run(targetUserId, authUserId)
+      await db.execute(`UPDATE friendships SET status = 'ACCEPTED' WHERE requesterId = ? AND receiverId = ?`, [targetUserId, authUserId])
     } else if (action === 'REMOVE') {
-      db.prepare(`DELETE FROM friendships WHERE (requesterId = ? AND receiverId = ?) OR (requesterId = ? AND receiverId = ?)`).run(authUserId, targetUserId, targetUserId, authUserId)
+      await db.execute(`DELETE FROM friendships WHERE (requesterId = ? AND receiverId = ?) OR (requesterId = ? AND receiverId = ?)`, [authUserId, targetUserId, targetUserId, authUserId])
     }
     return ok()
   } catch (error) { handleError(error) }

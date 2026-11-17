@@ -10,12 +10,11 @@ export default defineEventHandler(async (event) => {
   const hashedPassword = await bcrypt.hash(password, 10)
   const initialHcp = parseFloat(handicapIndex) || 18.0
 
-  const count = db.prepare('SELECT COUNT(*) as count FROM players').get() as { count: number }
+  const count = (await db.execute('SELECT COUNT(*) as count FROM players')).rows[0] as unknown as { count: number }
   const role = count.count === 0 ? 'ADMIN' : 'MEMBER'
 
   try {
-    db.prepare(`INSERT INTO players (id, name, username, password, handicapIndex, nextRoundPenalty, role, active) VALUES (?, ?, ?, ?, ?, 0.0, ?, 1)`)
-      .run(id, name.trim(), username.trim().toLowerCase(), hashedPassword, initialHcp, role)
+    await db.execute(`INSERT INTO players (id, name, username, password, handicapIndex, nextRoundPenalty, role, active) VALUES (?, ?, ?, ?, ?, 0.0, ?, 1)`, [id, name.trim(), username.trim().toLowerCase(), hashedPassword, initialHcp, role])
 
     setCookie(event, 'auth_user_id', id, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 30 })
     return { success: true, role }

@@ -4,7 +4,7 @@ export default defineEventHandler(async (event) => {
   const compId = event.context.params?.id
   if (!compId) throw createError({ statusCode: 400, statusMessage: 'Missing competition ID.' })
   try {
-    const rows = db.prepare(`SELECT s.id as scorecardId, s.playerId, p.name as playerName, COALESCE(p.handicapIndex, 0) as handicapIndex, COALESCE(s.stablefordPoints, 0) as stablefordPoints, s.holeScores FROM scores s JOIN players p ON s.playerId = p.id WHERE s.competitionId = ? ORDER BY s.stablefordPoints DESC`).all(compId) as any[]
+    const rows = (await db.execute(`SELECT s.id as scorecardId, s.playerId, p.name as playerName, COALESCE(p.handicapIndex, 0) as handicapIndex, COALESCE(s.stablefordPoints, 0) as stablefordPoints, s.holeScores FROM scores s JOIN players p ON s.playerId = p.id WHERE s.competitionId = ? ORDER BY s.stablefordPoints DESC`, [compId])).rows as any[]
     let rank = 1
     const leaderboard = rows.map((entry, i) => {
       const pts = Number(entry.stablefordPoints || 0)

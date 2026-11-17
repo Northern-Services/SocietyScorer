@@ -5,9 +5,9 @@ export default defineEventHandler(async (event) => {
   const authUserId = getAuthUserId(event)
   const { status } = await readBody(event)
   if (!compId || !status) throw createError({ statusCode: 400, statusMessage: 'Missing competition ID or status.' })
-  requireAdmin(event)
+  await requireAdmin(event)
   try {
-    db.prepare(`UPDATE competitions SET status = ? WHERE id = ?`).run(status, compId)
+    await db.execute(`UPDATE competitions SET status = ? WHERE id = ?`, [status, compId])
     return ok({ success: true, status })
   } catch (e) { handleError(e, 'Failed to update competition status.') }
 })

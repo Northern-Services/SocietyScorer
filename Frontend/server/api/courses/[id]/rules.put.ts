@@ -4,10 +4,10 @@ export default defineEventHandler(async (event) => {
   const courseId = event.context.params?.id
   const authUserId = getAuthUserId(event)
   if (!courseId) throw createError({ statusCode: 400, statusMessage: 'Missing course ID.' })
-  requireAdmin(event)
+  await requireAdmin(event)
   const { handicapRules, nextRoundPenalties } = await readBody(event)
   try {
-    db.prepare(`UPDATE courses SET handicapRules = ? WHERE id = ?`).run(JSON.stringify({ handicapRules, nextRoundPenalties }), courseId)
+    await db.execute(`UPDATE courses SET handicapRules = ? WHERE id = ?`, [JSON.stringify({ handicapRules, nextRoundPenalties }), courseId])
     return ok({ success: true, message: 'Course handicap rules saved successfully.' })
   } catch (e) { handleError(e, 'Failed to save course rules.') }
 })
