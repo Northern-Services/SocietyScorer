@@ -52,9 +52,44 @@ const formatUKDateOnly = (isoString: string) => {
   return `${day}/${month}/${year}`
 }
 
+// ---------- SITE-WIDE SETTINGS (persists to localStorage) ----------
+const SETTINGS_STORAGE_KEY = 'site_wide_settings'
+const isClient = typeof window !== 'undefined'
+const loadSiteSettings = () => {
+  try {
+    const raw = isClient ? localStorage.getItem(SETTINGS_STORAGE_KEY) : null
+    return raw ? JSON.parse(raw) : {
+      allowNonAdminCourseCreation: false,
+      enablePrizePool: true
+    }
+  } catch {
+    return {
+      allowNonAdminCourseCreation: false,
+      enablePrizePool: true
+    }
+  }
+}
+
+const siteSettings = ref(loadSiteSettings())
+const settingsSavedMessage = ref('')
+
+const saveSiteSettings = () => {
+  try {
+    if (isClient) {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(siteSettings.value))
+    }
+    settingsSavedMessage.value = 'SITE SETTINGS APPLIED SUCCESSFULLY'
+    addAuditLog('UPDATE_SITE_SETTINGS', 'Global Configuration', `Allow Non-Admin Courses: ${siteSettings.value.allowNonAdminCourseCreation}, Prize Pools Enabled: ${siteSettings.value.enablePrizePool}`)
+    setTimeout(() => {
+      settingsSavedMessage.value = ''
+    }, 3500)
+  } catch (err) {
+    alert('Failed to save site settings.')
+  }
+}
+
 // ---------- AUDIT LOG (client-side, persists to localStorage) ----------
 const AUDIT_STORAGE_KEY = 'admin_audit_log'
-const isClient = typeof window !== 'undefined'
 const loadAuditLog = (): any[] => {
   try {
     const raw = isClient ? localStorage.getItem(AUDIT_STORAGE_KEY) : null
@@ -403,26 +438,53 @@ const navItems = [
 
         <!-- Quick Actions Matrix -->
         <div class="border border-zinc-800 bg-zinc-950 rounded-sm overflow-hidden shadow-xl font-mono">
-          <div class="px-4 py-2.5 bg-zinc-900/80 border-b border-zinc-800 text-[11px] font-bold uppercase tracking-wider text-zinc-300">
-            Quick Actions
+          <div class="px-4 py-2.5 bg-zinc-900/80 border-b border-zinc-800 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-300">
+            <span>Quick Actions</span>
+            <span class="text-[9px] text-orange-400">// SHORTCUTS</span>
           </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-zinc-800">
-            <button @click="activeSection = 'users'" class="p-4 flex flex-col items-center gap-2 hover:bg-zinc-900 transition-colors cursor-pointer text-center group">
-              <UIcon name="i-heroicons-user-plus" class="w-5 h-5 text-orange-400 group-hover:scale-110 transition-transform" />
-              <span class="text-[11px] font-bold text-zinc-200">Manage Members</span>
+
+          <div class="grid grid-cols-2 sm:grid-cols-5 divide-x sm:divide-x-y-0 divide-y sm:divide-y-0 divide-zinc-800/80 bg-zinc-900/20">
+            
+            <!-- Manage Members -->
+            <button @click="activeSection = 'users'" class="p-3.5 flex flex-col items-center justify-center gap-2 hover:bg-zinc-900 transition-all cursor-pointer text-center group">
+              <div class="w-8 h-8 rounded-sm bg-zinc-900 border border-zinc-800 flex items-center justify-center text-orange-400 group-hover:border-orange-500/50 group-hover:scale-105 transition-all">
+                <UIcon name="i-heroicons-user-plus" class="w-4 h-4" />
+              </div>
+              <span class="text-[10px] font-bold text-zinc-200 group-hover:text-orange-400 transition-colors uppercase tracking-wider">Members</span>
             </button>
-            <button @click="activeSection = 'competitions'" class="p-4 flex flex-col items-center gap-2 hover:bg-zinc-900 transition-colors cursor-pointer text-center group">
-              <UIcon name="i-heroicons-calendar" class="w-5 h-5 text-orange-400 group-hover:scale-110 transition-transform" />
-              <span class="text-[11px] font-bold text-zinc-200">Manage Fixtures</span>
+
+            <!-- Manage Fixtures -->
+            <button @click="activeSection = 'competitions'" class="p-3.5 flex flex-col items-center justify-center gap-2 hover:bg-zinc-900 transition-all cursor-pointer text-center group">
+              <div class="w-8 h-8 rounded-sm bg-zinc-900 border border-zinc-800 flex items-center justify-center text-orange-400 group-hover:border-orange-500/50 group-hover:scale-105 transition-all">
+                <UIcon name="i-heroicons-calendar" class="w-4 h-4" />
+              </div>
+              <span class="text-[10px] font-bold text-zinc-200 group-hover:text-orange-400 transition-colors uppercase tracking-wider">Fixtures</span>
             </button>
-            <button @click="activeSection = 'courses'" class="p-4 flex flex-col items-center gap-2 hover:bg-zinc-900 transition-colors cursor-pointer text-center group">
-              <UIcon name="i-heroicons-map-pin" class="w-5 h-5 text-orange-400 group-hover:scale-110 transition-transform" />
-              <span class="text-[11px] font-bold text-zinc-200">Manage Courses</span>
+
+            <!-- Manage Courses -->
+            <button @click="activeSection = 'courses'" class="p-3.5 flex flex-col items-center justify-center gap-2 hover:bg-zinc-900 transition-all cursor-pointer text-center group">
+              <div class="w-8 h-8 rounded-sm bg-zinc-900 border border-zinc-800 flex items-center justify-center text-orange-400 group-hover:border-orange-500/50 group-hover:scale-105 transition-all">
+                <UIcon name="i-heroicons-map-pin" class="w-4 h-4" />
+              </div>
+              <span class="text-[10px] font-bold text-zinc-200 group-hover:text-orange-400 transition-colors uppercase tracking-wider">Courses</span>
             </button>
-            <button @click="activeSection = 'audit'" class="p-4 flex flex-col items-center gap-2 hover:bg-zinc-900 transition-colors cursor-pointer text-center group">
-              <UIcon name="i-heroicons-document-text" class="w-5 h-5 text-orange-400 group-hover:scale-110 transition-transform" />
-              <span class="text-[11px] font-bold text-zinc-200">Audit Log</span>
+
+            <!-- Audit Log -->
+            <button @click="activeSection = 'audit'" class="p-3.5 flex flex-col items-center justify-center gap-2 hover:bg-zinc-900 transition-all cursor-pointer text-center group">
+              <div class="w-8 h-8 rounded-sm bg-zinc-900 border border-zinc-800 flex items-center justify-center text-orange-400 group-hover:border-orange-500/50 group-hover:scale-105 transition-all">
+                <UIcon name="i-heroicons-document-text" class="w-4 h-4" />
+              </div>
+              <span class="text-[10px] font-bold text-zinc-200 group-hover:text-orange-400 transition-colors uppercase tracking-wider">Audit Log</span>
             </button>
+
+            <!-- Site Settings -->
+            <button @click="activeSection = 'settings'" class="p-3.5 flex flex-col items-center justify-center gap-2 hover:bg-zinc-900 transition-all cursor-pointer text-center group col-span-2 sm:col-span-1">
+              <div class="w-8 h-8 rounded-sm bg-zinc-900 border border-zinc-800 flex items-center justify-center text-orange-400 group-hover:border-orange-500/50 group-hover:scale-105 transition-all">
+                <UIcon name="i-heroicons-cog-6-tooth" class="w-4 h-4" />
+              </div>
+              <span class="text-[10px] font-bold text-zinc-200 group-hover:text-orange-400 transition-colors uppercase tracking-wider">Settings</span>
+            </button>
+
           </div>
         </div>
       </section>
@@ -642,31 +704,67 @@ const navItems = [
         </div>
       </section>
 
-      <!-- ============ SETTINGS ============ -->
+      <!-- ============ SETTINGS (SITE-WIDE CONFIGURATION) ============ -->
       <section v-if="activeSection === 'settings'" class="space-y-4">
         <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
           <div>
-            <div class="text-[10px] font-mono text-orange-400 uppercase tracking-widest">// CONFIGURATION</div>
-            <h1 class="text-xl font-bold tracking-tight text-zinc-100 font-sans">System Parameters</h1>
+            <div class="text-[10px] font-mono text-orange-400 uppercase tracking-widest">// GLOBAL CONTROLS</div>
+            <h1 class="text-xl font-bold tracking-tight text-zinc-100 font-sans">Site-Wide Infrastructure Settings</h1>
           </div>
         </div>
 
-        <div class="border border-zinc-800 bg-zinc-950 p-4 rounded-sm space-y-4 font-mono">
-          <div class="space-y-2">
-            <label class="text-[10px] uppercase tracking-wider text-zinc-400 block">Handicap Cut Rate (Band 1: 0–6)</label>
-            <input type="number" step="0.1" value="0.3" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+        <div class="border border-zinc-800 bg-zinc-950 p-5 rounded-sm space-y-5 font-mono">
+          
+          <div v-if="settingsSavedMessage" class="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs rounded-sm">
+            ✓ {{ settingsSavedMessage }}
           </div>
-          <div class="space-y-2">
-            <label class="text-[10px] uppercase tracking-wider text-zinc-400 block">Handicap Cut Rate (Band 2: 7–12)</label>
-            <input type="number" step="0.1" value="0.4" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+
+          <!-- Setting 1: Non-Admin Course Creation -->
+          <div class="flex items-center justify-between gap-4 p-3 bg-zinc-900/50 border border-zinc-800 rounded-sm">
+            <div class="space-y-0.5 min-w-0">
+              <span class="text-xs font-bold text-zinc-100 block font-sans">Restrict Course Creation to Admins</span>
+              <p class="text-[11px] text-zinc-400 font-sans">When enabled, only administrators can register new golf course venues.</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input type="checkbox" v-model="siteSettings.allowNonAdminCourseCreation" class="sr-only peer">
+              <div class="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-sm peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-sm after:h-4 after:w-4 after:transition-all peer-checked:bg-[#F6821F]"></div>
+            </label>
           </div>
-          <div class="space-y-2">
-            <label class="text-[10px] uppercase tracking-wider text-zinc-400 block">Handicap Cut Rate (Band 3: 13–18)</label>
-            <input type="number" step="0.1" value="0.5" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+
+          <!-- Setting 2: Competition Prize Pools -->
+          <div class="flex items-center justify-between gap-4 p-3 bg-zinc-900/50 border border-zinc-800 rounded-sm">
+            <div class="space-y-0.5 min-w-0">
+              <span class="text-xs font-bold text-zinc-100 block font-sans">Enable Competition Prize Pools & 2's Pots</span>
+              <p class="text-[11px] text-zinc-400 font-sans">Allow setting monetary prizes and pots when scheduling fixtures.</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input type="checkbox" v-model="siteSettings.enablePrizePool" class="sr-only peer">
+              <div class="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-sm peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-sm after:h-4 after:w-4 after:transition-all peer-checked:bg-[#F6821F]"></div>
+            </label>
           </div>
-          <div class="pt-2 border-t border-zinc-800">
-            <button class="w-full py-2.5 bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold text-xs uppercase tracking-wider rounded-sm transition-colors cursor-pointer shadow-md">
-              Save Parameters
+
+          <!-- Handicap Cut Rates Parameters -->
+          <div class="space-y-3 pt-3 border-t border-zinc-800">
+            <div class="text-[10px] uppercase tracking-wider text-orange-400">// HANDICAP CUT MULTIPLIERS</div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="space-y-1">
+                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block">Band 1 (0–6)</label>
+                <input type="number" step="0.1" value="0.3" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+              </div>
+              <div class="space-y-1">
+                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block">Band 2 (7–12)</label>
+                <input type="number" step="0.1" value="0.4" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+              </div>
+              <div class="space-y-1">
+                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block">Band 3 (13–18)</label>
+                <input type="number" step="0.1" value="0.5" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button @click="saveSiteSettings" class="w-full py-2.5 bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold text-xs uppercase tracking-wider rounded-sm transition-colors cursor-pointer shadow-md">
+              Save Site Settings
             </button>
           </div>
         </div>
@@ -755,24 +853,28 @@ const navItems = [
               <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Date & Tee Time</label>
               <input v-model="newCompDate" type="datetime-local" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
             </div>
-            <div class="grid grid-cols-3 gap-2">
-              <div>
-                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block mb-1">1st (£)</label>
-                <input v-model.number="newCompPrize1st" type="number" placeholder="0" class="w-full px-2 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+            
+            <!-- Conditional Prize Pool Fields based on Site Settings -->
+            <template v-if="siteSettings.enablePrizePool">
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="text-[9px] uppercase tracking-wider text-zinc-400 block mb-1">1st (£)</label>
+                  <input v-model.number="newCompPrize1st" type="number" placeholder="0" class="w-full px-2 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+                </div>
+                <div>
+                  <label class="text-[9px] uppercase tracking-wider text-zinc-400 block mb-1">2nd (£)</label>
+                  <input v-model.number="newCompPrize2nd" type="number" placeholder="0" class="w-full px-2 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+                </div>
+                <div>
+                  <label class="text-[9px] uppercase tracking-wider text-zinc-400 block mb-1">3rd (£)</label>
+                  <input v-model.number="newCompPrize3rd" type="number" placeholder="0" class="w-full px-2 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+                </div>
               </div>
               <div>
-                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block mb-1">2nd (£)</label>
-                <input v-model.number="newCompPrize2nd" type="number" placeholder="0" class="w-full px-2 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+                <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">2's Club Pot (£)</label>
+                <input v-model.number="newCompPotAmount" type="number" placeholder="0" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
               </div>
-              <div>
-                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block mb-1">3rd (£)</label>
-                <input v-model.number="newCompPrize3rd" type="number" placeholder="0" class="w-full px-2 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
-              </div>
-            </div>
-            <div>
-              <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">2's Club Pot (£)</label>
-              <input v-model.number="newCompPotAmount" type="number" placeholder="0" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
-            </div>
+            </template>
           </div>
           <div class="flex gap-2 pt-2 border-t border-zinc-800">
             <button @click="showCreateCompModal = false" class="flex-1 py-2 bg-zinc-900 border border-zinc-700 text-zinc-300 rounded-sm font-bold text-xs hover:bg-zinc-800 transition-colors cursor-pointer">
@@ -787,61 +889,109 @@ const navItems = [
 
       <!-- ============ CREATE COURSE MODAL ============ -->
       <div v-if="showCreateCourseModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" @click.self="showCreateCourseModal = false">
-        <div class="border border-zinc-800 bg-zinc-950 w-full max-w-md rounded-sm p-5 shadow-2xl font-mono space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="border border-zinc-800 bg-zinc-950 w-full max-w-xl rounded-sm p-5 shadow-2xl font-mono space-y-4 max-h-[90vh] overflow-y-auto">
+          
           <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-100">Configure New Course</h3>
-            <button @click="showCreateCourseModal = false" class="text-zinc-400 hover:text-white text-xs cursor-pointer">✕</button>
-          </div>
-          <div class="space-y-3">
             <div>
-              <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Course Name</label>
-              <input v-model="newCourseName" type="text" placeholder="e.g. Royal Links" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+              <div class="text-[10px] text-orange-400 uppercase tracking-widest">// VENUE PROVISIONING</div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-100 mt-0.5">Configure New Course</h3>
             </div>
-            <div>
-              <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Location</label>
-              <input v-model="newCourseLocation" type="text" placeholder="e.g. St Andrews" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+            <button @click="showCreateCourseModal = false" class="w-6 h-6 flex items-center justify-center rounded-sm border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs cursor-pointer">✕</button>
+          </div>
+
+          <div class="space-y-4">
+            <!-- General Info -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Course Name</label>
+                <input v-model="newCourseName" type="text" placeholder="e.g. Royal Links" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500 font-sans" />
+              </div>
+              <div>
+                <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Location / Town</label>
+                <input v-model="newCourseLocation" type="text" placeholder="e.g. St Andrews" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500 font-sans" />
+              </div>
             </div>
-            <div class="flex gap-2">
-              <button @click="handleHoleCountChange(18)" :class="newCourseNumHoles === 18 ? 'bg-[#F6821F] text-zinc-950 font-bold' : 'bg-zinc-900 text-zinc-400 border border-zinc-800'" class="flex-1 py-1.5 rounded-sm text-xs cursor-pointer transition-colors">
-                18 Holes
-              </button>
-              <button @click="handleHoleCountChange(9)" :class="newCourseNumHoles === 9 ? 'bg-[#F6821F] text-zinc-950 font-bold' : 'bg-zinc-900 text-zinc-400 border border-zinc-800'" class="flex-1 py-1.5 rounded-sm text-xs cursor-pointer transition-colors">
-                9 Holes
-              </button>
+
+            <!-- Weather Geolocation Coordinates -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-zinc-900/40 border border-zinc-800 rounded-sm">
+              <div>
+                <label class="text-[10px] uppercase tracking-wider text-sky-400 block mb-1">Latitude (Weather)</label>
+                <input v-model="newCourseLatitude" type="number" step="any" placeholder="e.g. 55.2044" class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+              </div>
+              <div>
+                <label class="text-[10px] uppercase tracking-wider text-sky-400 block mb-1">Longitude (Weather)</label>
+                <input v-model="newCourseLongitude" type="number" step="any" placeholder="e.g. -6.6533" class="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+              </div>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-center text-[10px]">
-                <thead>
-                  <tr class="text-zinc-500 font-bold uppercase border-b border-zinc-800">
-                    <th class="py-1 text-left">Hole</th>
-                    <th v-for="h in newCourseNumHoles" :key="h" class="py-1">{{ h }}</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-800">
-                  <tr class="text-orange-400 font-bold">
-                    <td class="py-1 text-left">Par</td>
-                    <td v-for="(_, idx) in newCoursePars" :key="idx" class="p-0.5">
-                      <input v-model.number="newCoursePars[idx]" type="number" min="3" max="6" class="w-full text-center py-1 bg-zinc-900 border border-zinc-800 rounded-sm text-white font-bold text-[10px] focus:outline-none focus:border-orange-500" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="py-1 text-left text-zinc-500">S.I.</td>
-                    <td v-for="(_, idx) in newCourseSI" :key="idx" class="p-0.5">
-                      <input v-model.number="newCourseSI[idx]" type="number" min="1" :max="newCourseNumHoles" class="w-full text-center py-1 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-300 text-[10px] focus:outline-none focus:border-orange-500" />
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+
+            <!-- Hole Count Selector -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] uppercase tracking-wider text-zinc-400 block">Course Layout</label>
+              <div class="flex gap-2">
+                <button @click="handleHoleCountChange(18)" type="button" :class="newCourseNumHoles === 18 ? 'bg-[#F6821F] text-zinc-950 font-bold border-[#F6821F]' : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-100'" class="flex-1 py-2 rounded-sm text-xs cursor-pointer transition-colors uppercase tracking-wider">
+                  18 Holes
+                </button>
+                <button @click="handleHoleCountChange(9)" type="button" :class="newCourseNumHoles === 9 ? 'bg-[#F6821F] text-zinc-950 font-bold border-[#F6821F]' : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-100'" class="flex-1 py-2 rounded-sm text-xs cursor-pointer transition-colors uppercase tracking-wider">
+                  9 Holes
+                </button>
+              </div>
+            </div>
+
+            <!-- Hole Breakdown List / Grid (Clean & Readable) -->
+            <div class="space-y-2 pt-2 border-t border-zinc-800">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] uppercase tracking-wider text-orange-400">// HOLE BREAKDOWN (PAR & S.I.)</span>
+                <span class="text-[10px] text-zinc-500">Configure parameters per hole</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto pr-1">
+                <div
+                  v-for="(_, idx) in newCourseNumHoles"
+                  :key="idx"
+                  class="border border-zinc-800 bg-zinc-900/40 rounded-sm p-2.5 space-y-1.5"
+                >
+                  <div class="flex items-center justify-between text-xs font-bold text-zinc-300">
+                    <span>HOLE {{ String(idx + 1).padStart(2, '0') }}</span>
+                    <span class="text-[10px] text-orange-400 font-mono">Par {{ newCoursePars[idx] }} • SI {{ newCourseSI[idx] }}</span>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="text-[9px] uppercase tracking-wider text-zinc-500 block mb-0.5">Par</label>
+                      <input
+                        v-model.number="newCoursePars[idx]"
+                        type="number"
+                        min="3"
+                        max="6"
+                        class="w-full text-center py-1.5 bg-zinc-950 border border-zinc-800 rounded-sm text-white font-bold text-xs focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                    <div>
+                      <label class="text-[9px] uppercase tracking-wider text-zinc-500 block mb-0.5">Stroke Index</label>
+                      <input
+                        v-model.number="newCourseSI[idx]"
+                        type="number"
+                        min="1"
+                        :max="newCourseNumHoles"
+                        class="w-full text-center py-1.5 bg-zinc-950 border border-zinc-800 rounded-sm text-zinc-300 font-bold text-xs focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="flex gap-2 pt-2 border-t border-zinc-800">
-            <button @click="showCreateCourseModal = false" class="flex-1 py-2 bg-zinc-900 border border-zinc-700 text-zinc-300 rounded-sm font-bold text-xs hover:bg-zinc-800 transition-colors cursor-pointer">
+
+          <!-- Footer Action Buttons -->
+          <div class="flex gap-2 pt-3 border-t border-zinc-800">
+            <button @click="showCreateCourseModal = false" type="button" class="flex-1 py-2.5 bg-zinc-900 border border-zinc-700 text-zinc-300 rounded-sm font-bold text-xs uppercase tracking-wider hover:bg-zinc-800 transition-colors cursor-pointer">
               Cancel
             </button>
-            <button @click="saveNewCourse" class="flex-1 py-2 bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold text-xs rounded-sm transition-colors cursor-pointer">
+            <button @click="saveNewCourse" type="button" class="flex-1 py-2.5 bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold text-xs uppercase tracking-wider rounded-sm transition-colors cursor-pointer shadow-md">
               Save Course
             </button>
           </div>
+
         </div>
       </div>
 
