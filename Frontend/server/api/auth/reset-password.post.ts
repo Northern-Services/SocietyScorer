@@ -2,9 +2,9 @@ import { db, readBody, createError, ok, handleError } from '../../utils/api'
 import bcrypt from 'bcrypt'
 
 export default defineEventHandler(async (event) => {
-  const { userId, tempPassword, newPassword, confirmPassword } = await readBody(event)
+  const { username, tempPassword, newPassword, confirmPassword } = await readBody(event)
 
-  if (!userId || !tempPassword || !newPassword || !confirmPassword) {
+  if (!username || !tempPassword || !newPassword || !confirmPassword) {
     throw createError({ statusCode: 400, statusMessage: 'All fields are required.' })
   }
 
@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const user = (await db.execute(`SELECT id, temp_password, must_change_password, active FROM players WHERE id = ?`, [userId])).rows[0] as any
+    const user = (await db.execute(`SELECT id, temp_password, must_change_password, active FROM players WHERE LOWER(username) = LOWER(?)`, [username.trim()])).rows[0] as any
     if (!user || !user.active) throw createError({ statusCode: 404, statusMessage: 'User not found.' })
     if (!user.must_change_password || !user.temp_password) {
       throw createError({ statusCode: 400, statusMessage: 'No pending password reset for this user.' })
@@ -30,10 +30,10 @@ export default defineEventHandler(async (event) => {
 
     await db.execute(
       `UPDATE players SET password = ?, temp_password = NULL, must_change_password = 0 WHERE id = ?`,
-      [hashedPassword, userId]
+      [hashedPassword, user.id]
     )
 
-    setCookie(event, 'auth_user_id', userId, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 30 })
+    setCookie(event, 'auth_user_id', user.id, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 60 * 60 * 24 * 30 })
     return ok({ success: true })
   } catch (err: any) { handleError(err) }
 })
