@@ -25,6 +25,19 @@ const liveLeaderboard = computed(() => leaderboardRes.value?.data?.leaderboard |
 const { data: twosRes, refresh: refreshTwos } = await useFetch(`/api/competitions/${compId}/twos`)
 const twosEntries = computed(() => twosRes.value?.data || [])
 
+// ---------- COURSES FOR EDIT MODAL ----------
+const courses = ref<any[]>([])
+const fetchCourses = async () => {
+  try {
+    const res: any = await $fetch('/api/courses')
+    if (res?.success) courses.value = res.courses || []
+  } catch (err) {
+    console.error('Failed to fetch courses for edit modal', err)
+  }
+}
+
+await fetchCourses()
+
 const twosPot = computed(() => Number(competition.value?.potAmount || 0))
 const twosSplit = computed(() => {
   const pot = twosPot.value
@@ -97,6 +110,13 @@ onMounted(async () => {
   pollTimer = setInterval(() => {
     refreshLeaderboard()
     refreshTwos()
+    // Auto-refresh page when competition start time is reached
+    if (competition.value?.date && competition.value?.status !== 'CLOSED') {
+      const startTime = new Date(competition.value.date).getTime()
+      if (Date.now() >= startTime) {
+        window.location.reload()
+      }
+    }
   }, 8000)
 })
 onUnmounted(() => { if (pollTimer) clearInterval(pollTimer) })
@@ -306,6 +326,7 @@ const handleDeleteCompetition = async () => {
             <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Course</label>
             <select v-model="editCompCourseId" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500">
               <option value="">-- Standard Venue --</option>
+              <option v-for="c in courses" :key="c.id" :value="c.id">{{ c.name }} ({{ c.location }})</option>
             </select>
           </div>
         </div>

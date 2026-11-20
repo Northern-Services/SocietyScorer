@@ -43,6 +43,9 @@ export async function initializeDatabase() {
     );
   `)
 
+  // Ensure scoresReleased column exists (migration for existing DBs)
+  try { await db.execute('ALTER TABLE competitions ADD COLUMN scoresReleased INTEGER DEFAULT 0') } catch { /* column may already exist */ }
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS competition_entries (
       id TEXT PRIMARY KEY,

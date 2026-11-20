@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   try {
     const current = (await db.execute('SELECT * FROM competitions WHERE id = ?', [id])).rows[0] as any
     if (!current) throw createError({ statusCode: 404, statusMessage: 'Competition not found.' })
-    await db.execute(`UPDATE competitions SET name = ?, date = ?, venue = ?, courseId = ?, status = ?, prize1st = ?, prize2nd = ?, prize3rd = ? WHERE id = ?`, [body.name !== undefined ? body.name : current.name, body.date !== undefined ? body.date : current.date, body.venue !== undefined ? body.venue : current.venue, body.courseId !== undefined ? body.courseId : current.courseId, body.status ?? current.status, body.prize1st !== undefined ? Number(body.prize1st) : current.prize1st, body.prize2nd !== undefined ? Number(body.prize2nd) : current.prize2nd, body.prize3rd !== undefined ? Number(body.prize3rd) : current.prize3rd, id])
+    await db.execute(`UPDATE competitions SET name = ?, date = ?, venue = ?, courseId = ?, status = ?, scoresReleased = ?, prize1st = ?, prize2nd = ?, prize3rd = ? WHERE id = ?`, [body.name !== undefined ? body.name : current.name, body.date !== undefined ? body.date : current.date, body.venue !== undefined ? body.venue : current.venue, body.courseId !== undefined ? body.courseId : current.courseId, body.status ?? current.status, body.scoresReleased !== undefined ? body.scoresReleased : current.scoresReleased, body.prize1st !== undefined ? Number(body.prize1st) : current.prize1st, body.prize2nd !== undefined ? Number(body.prize2nd) : current.prize2nd, body.prize3rd !== undefined ? Number(body.prize3rd) : current.prize3rd, id])
     return ok()
   } catch (e) { handleError(e) }
 })
