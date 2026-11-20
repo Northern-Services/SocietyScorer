@@ -14,7 +14,16 @@ export default defineEventHandler(async (event) => {
     try {
       const current = (await db.execute('SELECT * FROM competitions WHERE id = ?', [id])).rows[0] as any
       if (!current) throw createError({ statusCode: 404, statusMessage: 'Competition not found.' })
-      await db.execute(`DELETE FROM competitions WHERE id = ?`, [id])
+      // Delete all related records first to avoid foreign key constraint failures
+      await db.batch([
+        { sql: `DELETE FROM twos WHERE competitionId = ?`, args: [id] },
+        { sql: `DELETE FROM competition_lobby WHERE competitionId = ?`, args: [id] },
+        { sql: `DELETE FROM scorecards WHERE competitionId = ?`, args: [id] },
+        { sql: `DELETE FROM scores WHERE competitionId = ?`, args: [id] },
+        { sql: `DELETE FROM competition_entries WHERE competitionId = ?`, args: [id] },
+        { sql: `DELETE FROM competition_players WHERE competitionId = ?`, args: [id] },
+        { sql: `DELETE FROM competitions WHERE id = ?`, args: [id] }
+      ])
       return ok({ success: true })
     } catch (e) { handleError(e) }
   }
