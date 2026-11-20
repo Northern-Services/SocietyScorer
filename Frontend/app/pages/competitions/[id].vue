@@ -174,6 +174,61 @@ const handleReleaseScores = async () => {
     releasingScores.value = false
   }
 }
+
+// ---------- EDIT COMPETITION ----------
+const showEditCompModal = ref(false)
+const editCompName = ref('')
+const editCompDate = ref('')
+const editCompVenue = ref('')
+const editCompCourseId = ref('')
+const editingComp = ref(false)
+
+const openEditCompModal = () => {
+  if (!competition.value) return
+  editCompName.value = competition.value.name || ''
+  editCompDate.value = competition.value.date || ''
+  editCompVenue.value = competition.value.venue || ''
+  editCompCourseId.value = competition.value.courseId || ''
+  showEditCompModal.value = true
+}
+
+const handleEditCompetition = async () => {
+  if (!competition.value?.id) return
+  editingComp.value = true
+  try {
+    await $fetch(`/api/competitions/${competition.value.id}`, {
+      method: 'PUT',
+      body: {
+        name: editCompName.value.trim(),
+        date: editCompDate.value,
+        venue: editCompVenue.value.trim(),
+        courseId: editCompCourseId.value || null
+      }
+    })
+    await refreshCompetition()
+    showEditCompModal.value = false
+  } catch (err: any) {
+    alert(err?.data?.statusMessage || 'Failed to update competition.')
+  } finally {
+    editingComp.value = false
+  }
+}
+
+// ---------- DELETE COMPETITION ----------
+const deletingComp = ref(false)
+const handleDeleteCompetition = async () => {
+  if (!competition.value?.id) return
+  if (!confirm(`Are you sure you want to delete the competition "${competition.value.name}"? This cannot be undone.`)) return
+  deletingComp.value = true
+  try {
+    await $fetch(`/api/competitions/${competition.value.id}`, { method: 'DELETE' })
+    await navigateTo('/competitions')
+  } catch (err: any) {
+    alert(err?.data?.statusMessage || 'Failed to delete competition.')
+  } finally {
+    deletingComp.value = false
+  }
+}
 </script>
 
 <template>
@@ -218,6 +273,50 @@ const handleReleaseScores = async () => {
         <button v-if="competition?.status !== 'CLOSED'" @click="updateCompetitionStatus('CLOSED')" class="px-2.5 py-1 bg-zinc-900 border border-zinc-700 text-zinc-300 hover:text-white text-[10px] font-bold uppercase rounded-sm transition-colors cursor-pointer">
           CLOSE_COMPETITION
         </button>
+        <button @click="openEditCompModal" class="px-2.5 py-1 bg-sky-500/20 border border-sky-500/40 text-sky-400 hover:bg-sky-500/30 text-[10px] font-bold uppercase rounded-sm transition-colors cursor-pointer">
+          EDIT_COMPETITION
+        </button>
+        <button @click="handleDeleteCompetition" :disabled="deletingComp" class="px-2.5 py-1 bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 text-[10px] font-bold uppercase rounded-sm transition-colors cursor-pointer disabled:opacity-50">
+          DELETE_COMPETITION
+        </button>
+      </div>
+    </div>
+
+    <!-- Edit Competition Modal -->
+    <div v-if="showEditCompModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" @click.self="showEditCompModal = false">
+      <div class="border border-zinc-800 bg-zinc-950 w-full max-w-md rounded-sm p-5 shadow-2xl font-mono space-y-4">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-100">Edit Competition</h3>
+          <button @click="showEditCompModal = false" class="text-zinc-400 hover:text-white text-xs cursor-pointer">✕</button>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Competition Name</label>
+            <input v-model="editCompName" type="text" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+          </div>
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Date & Time</label>
+            <input v-model="editCompDate" type="datetime-local" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+          </div>
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Venue</label>
+            <input v-model="editCompVenue" type="text" placeholder="e.g. Home Course" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+          </div>
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-zinc-400 block mb-1">Course</label>
+            <select v-model="editCompCourseId" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500">
+              <option value="">-- Standard Venue --</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex gap-2 pt-2 border-t border-zinc-800">
+          <button @click="showEditCompModal = false" class="flex-1 py-2 bg-zinc-900 border border-zinc-700 text-zinc-300 rounded-sm font-bold text-xs hover:bg-zinc-800 transition-colors cursor-pointer">
+            Cancel
+          </button>
+          <button @click="handleEditCompetition" :disabled="editingComp" class="flex-1 py-2 bg-[#F6821F] hover:bg-[#e57312] text-zinc-950 font-bold text-xs rounded-sm transition-colors cursor-pointer disabled:opacity-50">
+            {{ editingComp ? 'SAVING...' : 'Save Changes' }}
+          </button>
+        </div>
       </div>
     </div>
 
