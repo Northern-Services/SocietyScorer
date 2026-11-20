@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
         doc.fontSize(7.5).font('Helvetica')
         let scoreX = 48, scoreY = doc.y
         for (let h = 1; h <= 18; h++) {
-          const stroke = entry.scoresParsed[h] !== undefined ? entry.scoresParsed[h] : '-'
+          const stroke = entry.scoresParsed[h - 1] !== undefined ? entry.scoresParsed[h - 1] : entry.scoresParsed[h] !== undefined ? entry.scoresParsed[h] : '-'
           doc.rect(scoreX, scoreY, 26, 18).stroke('#cbd5e1').fillColor('#64748b').text(`H${h}`, scoreX + 2, scoreY + 2, { width: 22, align: 'center' }).fillColor('#0f172a').font('Helvetica-Bold').text(`${stroke}`, scoreX + 2, scoreY + 10, { width: 22, align: 'center' }).font('Helvetica')
           scoreX += 27
           if (h === 9) { scoreX = 48; scoreY += 20 }
