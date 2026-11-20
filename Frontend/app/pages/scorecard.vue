@@ -110,11 +110,12 @@ const shotsReceived = computed(() => {
 
 // Player's personal handicap band for this round
 const handicapBand = computed(() => {
-  const hcp = playingHandicap.value
-  if (hcp <= 6) return { label: 'Band 1 (0–6)', rate: 0.2, color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' }
-  if (hcp <= 12) return { label: 'Band 2 (7–12)', rate: 0.4, color: 'text-sky-400 border-sky-500/30 bg-sky-500/10' }
-  if (hcp <= 18) return { label: 'Band 3 (13–18)', rate: 0.6, color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' }
-  return { label: 'Band 4 (19–32)', rate: 0.8, color: 'text-rose-400 border-rose-500/30 bg-rose-500/10' }
+  const hcp = Number(playingHandicap.value || 0)
+  if (hcp <= 6) return { label: 'Band A (0–6)', rate: 0.2, color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' }
+  if (hcp <= 12) return { label: 'Band B (7–12)', rate: 0.4, color: 'text-sky-400 border-sky-500/30 bg-sky-500/10' }
+  if (hcp <= 18) return { label: 'Band C (13–18)', rate: 0.6, color: 'text-orange-400 border-orange-500/30 bg-orange-500/10' }
+  if (hcp <= 25) return { label: 'Band D (19–25)', rate: 0.8, color: 'text-rose-400 border-rose-500/30 bg-rose-500/10' }
+  return { label: 'Band E (26–35)', rate: 1.0, color: 'text-purple-400 border-purple-500/30 bg-purple-500/10' }
 })
 
 const holePoints = computed(() => {
@@ -379,7 +380,7 @@ watch(
         <!-- Hole Telemetry Header -->
         <div class="px-4 py-3 bg-zinc-900/80 border-b border-zinc-800 flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-sm bg-zinc-900 border border-zinc-700 text-orange-400 font-bold text-sm flex items-center justify-center">
+            <div class="w-12 h-12 rounded-sm bg-zinc-900 border border-zinc-700 text-orange-400 font-bold text-xl flex items-center justify-center">
               {{ currentHoleNumber }}
             </div>
             <div>

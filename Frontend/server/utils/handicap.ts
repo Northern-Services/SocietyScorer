@@ -145,9 +145,10 @@ export function calculateEarlybirdsHandicapCut(
   const activeBands = bands || defaultBands
 
   // Find the band rate for the player's current handicap index
+  const hcp = Number(currentHandicapIndex || 0)
   let bandRate = defaultBands[4]?.bandRate ?? 1.0 // Default to Band E for out-of-range indexes
   for (const band of activeBands) {
-    if (currentHandicapIndex >= band.minPts && currentHandicapIndex <= band.maxPts) {
+    if (hcp >= band.minPts && hcp <= band.maxPts) {
       bandRate = band.bandRate
       break
     }
