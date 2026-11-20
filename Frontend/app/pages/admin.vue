@@ -766,20 +766,29 @@ const navItems = [
           <!-- Handicap Cut Rates Parameters -->
           <div class="space-y-3 pt-3 border-t border-zinc-800">
             <div class="text-[10px] uppercase tracking-wider text-orange-400">// HANDICAP CUT MULTIPLIERS</div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               <div class="space-y-1">
-                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block">Band 1 (0–6)</label>
-                <input type="number" step="0.1" value="0.3" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block">Band A (0–6)</label>
+                <input type="number" step="0.1" value="0.2" readonly class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs font-bold focus:outline-none" />
               </div>
               <div class="space-y-1">
-                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block">Band 2 (7–12)</label>
-                <input type="number" step="0.1" value="0.4" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block">Band B (7–12)</label>
+                <input type="number" step="0.1" value="0.4" readonly class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs font-bold focus:outline-none" />
               </div>
               <div class="space-y-1">
-                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block">Band 3 (13–18)</label>
-                <input type="number" step="0.1" value="0.5" class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs focus:outline-none focus:border-orange-500" />
+                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block">Band C (13–18)</label>
+                <input type="number" step="0.1" value="0.6" readonly class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs font-bold focus:outline-none" />
+              </div>
+              <div class="space-y-1">
+                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block">Band D (19–25)</label>
+                <input type="number" step="0.1" value="0.8" readonly class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs font-bold focus:outline-none" />
+              </div>
+              <div class="space-y-1">
+                <label class="text-[9px] uppercase tracking-wider text-zinc-400 block">Band E (26–35)</label>
+                <input type="number" step="0.1" value="1.0" readonly class="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-sm text-zinc-100 text-xs font-bold focus:outline-none" />
               </div>
             </div>
+            <p class="text-[9px] text-zinc-500 mt-2">Band rates applied per player's handicap index when calculating post-round cuts.</p>
           </div>
 
           <div class="pt-2">

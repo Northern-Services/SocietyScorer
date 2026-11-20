@@ -133,16 +133,19 @@ export function calculateEarlybirdsHandicapCut(
   bands?: HandicapBand[]
 ) {
   // Default bands (fallback)
+  // Band A (0-6): 0.2  |  Band B (7-12): 0.4  |  Band C (13-18): 0.6
+  // Band D (19-25): 0.8  |  Band E (26-35): 1.0
   const defaultBands: HandicapBand[] = [
-    { minPts: 0, maxPts: 6, bandRate: 0.2 },
-    { minPts: 7, maxPts: 12, bandRate: 0.4 },
-    { minPts: 13, maxPts: 18, bandRate: 0.6 },
-    { minPts: 19, maxPts: 32, bandRate: 0.8 }
+    { id: 'A', label: 'Band A', minPts: 0, maxPts: 6, bandRate: 0.2 },
+    { id: 'B', label: 'Band B', minPts: 7, maxPts: 12, bandRate: 0.4 },
+    { id: 'C', label: 'Band C', minPts: 13, maxPts: 18, bandRate: 0.6 },
+    { id: 'D', label: 'Band D', minPts: 19, maxPts: 25, bandRate: 0.8 },
+    { id: 'E', label: 'Band E', minPts: 26, maxPts: 35, bandRate: 1.0 }
   ]
   const activeBands = bands || defaultBands
 
   // Find the band rate for the player's current handicap index
-  let bandRate = defaultBands[3]?.bandRate ?? 0.8 // Default to band 4
+  let bandRate = defaultBands[4]?.bandRate ?? 1.0 // Default to Band E for out-of-range indexes
   for (const band of activeBands) {
     if (currentHandicapIndex >= band.minPts && currentHandicapIndex <= band.maxPts) {
       bandRate = band.bandRate
