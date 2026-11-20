@@ -22,6 +22,11 @@ export async function initializeDatabase() {
     );
   `)
 
+  // Ensure temp_password column exists (migration for existing DBs)
+  try { await db.execute('ALTER TABLE players ADD COLUMN temp_password TEXT') } catch { /* column may already exist */ }
+  // Ensure must_change_password column exists (migration for existing DBs)
+  try { await db.execute('ALTER TABLE players ADD COLUMN must_change_password INTEGER DEFAULT 0') } catch { /* column may already exist */ }
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS competitions (
       id TEXT PRIMARY KEY,
