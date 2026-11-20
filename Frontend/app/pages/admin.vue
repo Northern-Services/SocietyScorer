@@ -200,13 +200,37 @@ const editingUser = ref<any>(null)
 const editUserName = ref('')
 const editUserHcp = ref(0)
 const editUserRole = ref<UserRole>(USER_ROLES.MEMBER)
+const showTempPassword = ref(false)
+const tempPassword = ref('')
+const creatingTempPassword = ref(false)
 
 const openManageUserModal = (player: any) => {
   editingUser.value = player
   editUserName.value = player.name || ''
   editUserHcp.value = Number(player.handicapIndex || 0)
   editUserRole.value = player.role || USER_ROLES.MEMBER
+  showTempPassword.value = false
+  tempPassword.value = ''
   showManageUserModal.value = true
+}
+
+const createTempPassword = async () => {
+  if (!editingUser.value?.id) return
+  creatingTempPassword.value = true
+  try {
+    const res: any = await $fetch(`/api/players/${editingUser.value.id}/temp-password`, {
+      method: 'POST'
+    })
+    if (res?.success) {
+      tempPassword.value = res.tempPassword
+      showTempPassword.value = true
+      addAuditLog('CREATE_TEMP_PASSWORD', editUserName.value, 'Temporary password issued')
+    }
+  } catch (err: any) {
+    alert(err?.data?.statusMessage || 'Failed to create temporary password.')
+  } finally {
+    creatingTempPassword.value = false
+  }
 }
 
 const saveManagedUser = async () => {
@@ -822,7 +846,27 @@ const navItems = [
               </select>
               <p class="text-[9px] text-zinc-500 mt-1">{{ ROLE_DESCRIPTIONS[editUserRole as keyof typeof ROLE_DESCRIPTIONS] || '' }}</p>
             </div>
+            <div class="pt-2 border-t border-zinc-800/50">
+              <button
+                @click="createTempPassword"
+                :disabled="creatingTempPassword"
+                class="w-full py-2 bg-zinc-900 border border-zinc-700 text-zinc-300 hover:bg-zinc-800 text-[10px] font-bold uppercase tracking-wider rounded-sm transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {{ creatingTempPassword ? 'GENERATING...' : 'CREATE TEMPORARY PASSWORD' }}
+              </button>
+              <p class="text-[9px] text-zinc-500 mt-1">Issues a one-time password and forces a reset on next login.</p>
+            </div>
           </div>
+
+          <!-- Temp Password Reveal -->
+          <div v-if="showTempPassword && tempPassword" class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-sm space-y-2 font-mono">
+            <div class="flex items-center justify-between">
+              <span class="text-[9px] text-amber-400 font-bold uppercase tracking-wider">Temporary Password</span>
+              <span class="text-xs font-bold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-sm">{{ tempPassword }}</span>
+            </div>
+            <p class="text-[9px] text-amber-200">Share this with the user. They will be prompted to set a new password on next login.</p>
+          </div>
+
           <div class="flex gap-2 pt-2 border-t border-zinc-800">
             <button @click="showManageUserModal = false" class="flex-1 py-2 bg-zinc-900 border border-zinc-700 text-zinc-300 rounded-sm font-bold text-xs hover:bg-zinc-800 transition-colors cursor-pointer">
               Cancel
